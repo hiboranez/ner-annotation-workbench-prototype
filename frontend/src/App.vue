@@ -1,11 +1,26 @@
-<script setup></script>
-
 <template>
-  <h1>You did it!</h1>
-  <p>
-    Visit <a href="https://vuejs.org/" target="_blank" rel="noopener">vuejs.org</a> to read the
-    documentation
-  </p>
+  <div id="app">
+    <Navbar/>
+    <div class="layout">
+      <Sidebar/>
+      <ContentWrapper/>
+    </div>
+  </div>
 </template>
 
-<style scoped></style>
+<script>
+import Navbar from './components/Navbar.vue'
+import Sidebar from './components/Sidebar.vue'
+import ContentWrapper from './components/ContentWrapper.vue'
+
+export default {
+  components: {Navbar, Sidebar, ContentWrapper}
+}
+</script>
+
+<style>
+.layout {
+  display: flex;
+  height: 100vh;
+}
+</style>

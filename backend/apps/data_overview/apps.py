@@ -1,6 +1,6 @@
 from django.apps import AppConfig
 
 
-class DataExportConfig(AppConfig):
+class DataOverviewConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
-    name = 'data_export'
+    name = 'apps.data_overview'
