@@ -19,8 +19,8 @@ from django.urls import path, include
 
 urlpatterns = [
     path("admin/", admin.site.urls),
-    path("api/data_import/", include("apps.data_import.urls")),
-    path("api/data_overview/", include("apps.data_overview.urls")),
-    path("api/data_annotation/", include("apps.data_annotation.urls")),
-    path("api/data_export/", include("apps.data_export.urls")),
+    path("api/data-import/", include("apps.data_import.urls")),
+    path("api/data-overview/", include("apps.data_overview.urls")),
+    path("api/data-annotation/", include("apps.data_annotation.urls")),
+    path("api/data-export/", include("apps.data_export.urls")),
 ]
