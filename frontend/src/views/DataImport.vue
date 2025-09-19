@@ -1,3 +1,4 @@
+<!-- frontend/src/views/DataImport.vue -->
 <template>
   <div class="data-import-container">
     <div class="content-area">
@@ -92,9 +93,9 @@
               <span style="text-align:left;max-height:60px;overflow:auto;">{{ item.content }}</span>
               <span>{{ item.status }}</span>
               <span>
-                    <button class="edit-btn" @click="editCorpus(item)">编辑</button>
-                    <button class="delete-btn" @click="deleteCorpus(item)">删除</button>
-                  </span>
+                      <button class="edit-btn" @click="editCorpus(item)">编辑</button>
+                      <button class="delete-btn" @click="deleteCorpus(item)">删除</button>
+                    </span>
             </div>
           </div>
 
@@ -102,27 +103,27 @@
             <button class="pager-btn" :disabled="corpusPage===1" @click="corpusPage=1">«</button>
             <button class="pager-btn" :disabled="corpusPage===1" @click="corpusPage--">上一页</button>
             <span class="pager-info">
-    第
-    <span
-        v-if="!editingCorpusPage"
-        class="pager-current"
-        @click="startEditCorpusPage"
-        title="点击输入页码跳转"
-    >{{ corpusPage }}</span>
-    <input
-        v-else
-        ref="corpusPageInput"
-        class="pager-input"
-        type="number"
-        v-model="tempCorpusPage"
-        min="1"
-        :max="corpusTotalPages"
-        @blur="confirmCorpusPage"
-        @keyup.enter="confirmCorpusPage"
-        @keyup.esc="cancelCorpusPage"
-    />
-    / {{ corpusTotalPages }} 页
-  </span>
+                    第
+                    <span
+                        v-if="!editingCorpusPage"
+                        class="pager-current"
+                        @click="startEditCorpusPage"
+                        title="点击输入页码跳转"
+                    >{{ corpusPage }}</span>
+                    <input
+                        v-else
+                        ref="corpusPageInput"
+                        class="pager-input"
+                        type="number"
+                        v-model="tempCorpusPage"
+                        min="1"
+                        :max="corpusTotalPages"
+                        @blur="confirmCorpusPage"
+                        @keyup.enter="confirmCorpusPage"
+                        @keyup.esc="cancelCorpusPage"
+                    />
+                    / {{ corpusTotalPages }} 页
+                  </span>
             <button class="pager-btn" :disabled="corpusPage===corpusTotalPages" @click="corpusPage++">下一页</button>
             <button class="pager-btn" :disabled="corpusPage===corpusTotalPages" @click="corpusPage=corpusTotalPages">»
             </button>
@@ -150,10 +151,10 @@
                 <span
                     class="parse-status-text"
                     :class="{
-                      'is-uploading': u.status==='uploading',
-                      'is-success': u.status==='success',
-                      'is-failed': u.status==='failed'
-                    }"
+                          'is-uploading': u.status==='uploading',
+                          'is-success': u.status==='success',
+                          'is-failed': u.status==='failed'
+                        }"
                 >{{ statusText(u.status) }}</span>
               </div>
               <div class="bar-wrap">
@@ -168,27 +169,27 @@
             <button class="pager-btn" :disabled="uploadPage===1" @click="uploadPage=1">«</button>
             <button class="pager-btn" :disabled="uploadPage===1" @click="uploadPage--">上一页</button>
             <span class="pager-info">
-    第
-    <span
-        v-if="!editingUploadPage"
-        class="pager-current"
-        @click="startEditUploadPage"
-        title="点击输入页码跳转"
-    >{{ uploadPage }}</span>
-    <input
-        v-else
-        ref="uploadPageInput"
-        class="pager-input"
-        type="number"
-        v-model="tempUploadPage"
-        min="1"
-        :max="uploadTotalPages"
-        @blur="confirmUploadPage"
-        @keyup.enter="confirmUploadPage"
-        @keyup.esc="cancelUploadPage"
-    />
-    / {{ uploadTotalPages }} 页
-  </span>
+                    第
+                    <span
+                        v-if="!editingUploadPage"
+                        class="pager-current"
+                        @click="startEditUploadPage"
+                        title="点击输入页码跳转"
+                    >{{ uploadPage }}</span>
+                    <input
+                        v-else
+                        ref="uploadPageInput"
+                        class="pager-input"
+                        type="number"
+                        v-model="tempUploadPage"
+                        min="1"
+                        :max="uploadTotalPages"
+                        @blur="confirmUploadPage"
+                        @keyup.enter="confirmUploadPage"
+                        @keyup.esc="cancelUploadPage"
+                    />
+                    / {{ uploadTotalPages }} 页
+                  </span>
             <button class="pager-btn" :disabled="uploadPage===uploadTotalPages" @click="uploadPage++">下一页</button>
             <button class="pager-btn" :disabled="uploadPage===uploadTotalPages" @click="uploadPage=uploadTotalPages">»
             </button>
@@ -260,8 +261,7 @@
   </div>
 </template>
 
-<script>
-import uploadManager from '@/utils/uploadManager';
+<script>import uploadManager from '@/utils/uploadManager';
 
 const API_BASE = '/api/data-import';
 
@@ -285,7 +285,6 @@ export default {
       tempCorpusPage: '',
       editingUploadPage: false,
       tempUploadPage: ''
-      // 移除 uploadState
     };
   },
   computed: {
@@ -307,7 +306,7 @@ export default {
       return this.uploads.slice(start, start + this.uploadPageSize);
     },
     uploads() {
-      return uploadManager.state.uploads; // 直接引用
+      return uploadManager.state.uploads;
     }
   },
   watch: {
@@ -362,21 +361,20 @@ export default {
       this.fetchCorpusData();
     },
     selectFile() {
+      // 中央按钮允许多类型，重置已选类型
+      this.selectedFileType = '';
       this.$refs.fileInput.click();
     },
     selectSpecificType(type) {
+      // 类型快捷按钮仍可设置一个偏好（不再限制混合选择）
       this.selectedFileType = type;
       this.selectFile();
     },
     handleFileChange(e) {
       const files = e.target.files;
       Array.from(files).forEach(f => {
-        const ext = f.name.split('.').pop().toLowerCase();
-        if (!this.selectedFileType || ext === this.selectedFileType) {
-          this.uploadFile(f);
-        } else {
-          alert(`只能上传 ${this.selectedFileType.toUpperCase()} 文件`);
-        }
+        // 不再限制只能上传某一种类型
+        this.uploadFile(f);
       });
       e.target.value = '';
     },
@@ -409,7 +407,6 @@ export default {
     editCorpus(item) {
       console.log('Edit', item);
     },
-    /* 文件分布 */
     segmentStyle(type) {
       const total = this.totalUploaded;
       const ratio = total ? (this.uploadedFiles[type] / total) : 0;
@@ -486,7 +483,7 @@ export default {
     },
     cancelUploadPage() {
       this.editingUploadPage = false;
-    },
+    }
   },
   mounted() {
     this.fetchStats();
@@ -567,7 +564,7 @@ export default {
   display: flex;
   flex-direction: column;
   gap: 20px;
-  width: 300px;
+  width: 400px;
 }
 
 .card {
@@ -703,11 +700,11 @@ export default {
 .corpus-list-item {
   display: grid;
   grid-template-columns:
-      minmax(50px, 0.8fr)
-      minmax(70px, 1fr)
-      minmax(200px, 2.5fr)
-      minmax(70px, 1fr)
-      minmax(120px, 1fr);
+          minmax(50px, 0.8fr)
+          minmax(70px, 1fr)
+          minmax(200px, 2.5fr)
+          minmax(70px, 1fr)
+          minmax(120px, 1fr);
   column-gap: 12px;
   align-items: center;
   text-align: center;
@@ -907,7 +904,6 @@ export default {
   cursor: default;
 }
 
-/* 伪元素绘制灰色外框，确保圆角不被覆盖 */
 .distribution-bar::before {
   content: "";
   position: absolute;
@@ -1016,9 +1012,9 @@ export default {
 
 .pager-current {
   cursor: pointer;
-  padding: 0 4px;
+  padding: 0 0px;
   color: #2563eb;
-  font-weight: 600;
+  font-weight: 800;
 }
 
 .pager-input {
