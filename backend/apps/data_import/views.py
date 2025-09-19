@@ -1,5 +1,5 @@
-import os
 import json
+import os
 
 from django.core.files.storage import default_storage
 from django.http import JsonResponse
@@ -10,6 +10,17 @@ from .models import CorpusData
 from .serializers import CorpusDataSerializer
 
 ALLOWED_TYPES = {'pdf', 'docx', 'txt', 'json'}
+
+
+@csrf_exempt
+@require_http_methods(["DELETE"])
+def corpus_detail(request, pk):
+    try:
+        obj = CorpusData.objects.get(pk=pk)
+    except CorpusData.DoesNotExist:
+        return JsonResponse({'error': '未找到'}, status=404)
+    obj.delete()
+    return JsonResponse({'message': '删除成功'})
 
 
 def build_stats():

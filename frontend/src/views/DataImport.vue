@@ -409,9 +409,6 @@ export default {
     editCorpus(item) {
       console.log('Edit', item);
     },
-    deleteCorpus(item) {
-      alert('示例：未实现删除接口');
-    },
     /* 文件分布 */
     segmentStyle(type) {
       const total = this.totalUploaded;
@@ -442,6 +439,17 @@ export default {
     },
     hideDistTooltip() {
       this.distTooltip.visible = false;
+    },
+    deleteCorpus(item) {
+      if (!window.confirm(`确认删除该语料（ID: ${item.id}）吗？此操作不可撤销`)) return;
+      fetch(`${API_BASE}/corpus-data/${item.id}/`, {method: 'DELETE'})
+          .then(r => {
+            if (!r.ok) throw new Error();
+            this.corpusData = this.corpusData.filter(c => c.id !== item.id);
+            if (this.corpusPage > this.corpusTotalPages) this.corpusPage = this.corpusTotalPages;
+            this.fetchStats();
+          })
+          .catch(() => alert('删除失败'));
     },
     startEditCorpusPage() {
       this.editingCorpusPage = true;
@@ -488,6 +496,52 @@ export default {
 </script>
 
 <style scoped>
+.edit-btn,
+.delete-btn,
+.file-type-card,
+.upload-btn,
+.export-btn,
+.search-btn,
+.filter-btn {
+  position: relative;
+  transition: background-color .25s ease, transform .15s ease, box-shadow .25s ease;
+  will-change: transform;
+}
+
+.edit-btn:hover,
+.delete-btn:hover,
+.file-type-card:hover,
+.upload-btn:hover,
+.export-btn:hover,
+.search-btn:hover,
+.filter-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 14px -4px rgba(0, 0, 0, 0.25);
+}
+
+.edit-btn:active,
+.delete-btn:active,
+.file-type-card:active,
+.upload-btn:active,
+.export-btn:active,
+.search-btn:active,
+.filter-btn:active {
+  transform: translateY(0) scale(0.95);
+  box-shadow: 0 3px 8px -2px rgba(0, 0, 0, 0.30);
+  filter: brightness(0.95);
+}
+
+.edit-btn:focus-visible,
+.delete-btn:focus-visible,
+.file-type-card:focus-visible,
+.upload-btn:focus-visible,
+.export-btn:focus-visible,
+.search-btn:focus-visible,
+.filter-btn:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+}
+
 .data-import-container {
   display: flex;
   justify-content: center;
@@ -566,7 +620,7 @@ export default {
   text-align: center;
   cursor: pointer;
   color: #111;
-  border: 2px solid #ccc;
+  border: 1px solid #ccc;
 }
 
 .corpus-header {
@@ -848,10 +902,19 @@ export default {
   width: 100%;
   height: 36px;
   border: 1px solid #ccc;
-  border-radius: 8px;
   overflow: visible;
   background: #f5f5f5;
   cursor: default;
+}
+
+/* 伪元素绘制灰色外框，确保圆角不被覆盖 */
+.distribution-bar::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border: 1px solid #ccc;
+  pointer-events: none;
+  z-index: 2;
 }
 
 .distribution-bar.is-empty {
@@ -862,12 +925,14 @@ export default {
   height: 100%;
   transition: width .35s ease, filter .2s;
   position: relative;
+  z-index: 1;
 }
 
 .dist-segment:hover {
   filter: brightness(1.15);
-  outline: 2px solid rgba(255, 255, 255, 0.9);
-  outline-offset: -2px;
+  outline: none;
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.9);
+  z-index: 1;
 }
 
 .distribution-legend {
@@ -890,7 +955,7 @@ export default {
 .distribution-legend .dot {
   width: 10px;
   height: 10px;
-  border-radius: 50%;
+  border-radius: 6px;
   border: 1px solid #666;
 }
 
