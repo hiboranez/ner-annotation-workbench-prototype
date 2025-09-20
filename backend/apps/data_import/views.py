@@ -88,10 +88,7 @@ def upload_data(request):
         return JsonResponse({"error": "缺少文件"}, status=400)
 
     ext = up_file.name.rsplit('.', 1)[-1].lower()
-    if ext not in ALLOWED_TYPES:
-        return JsonResponse({"error": f"不支持的文件类型: {ext}"}, status=400)
 
-    # 一次性读取字节，避免后续解析读到不完整文件
     file_bytes = up_file.read()
 
     # 先保存原文件

@@ -90,7 +90,9 @@
             >
               <span>{{ item.id }}</span>
               <span>{{ item.fileType.toUpperCase() }}</span>
-              <span style="text-align:left;max-height:60px;overflow:auto;">{{ item.content }}</span>
+              <span class="corpus-content" style="text-align:left;max-height:60px;overflow:auto;">{{
+                  item.content
+                }}</span>
               <span>{{ item.status }}</span>
               <span>
                       <button class="edit-btn" @click="editCorpus(item)">编辑</button>
@@ -284,7 +286,8 @@ export default {
       editingCorpusPage: false,
       tempCorpusPage: '',
       editingUploadPage: false,
-      tempUploadPage: ''
+      tempUploadPage: '',
+      lastSuccessCount: 0,
     };
   },
   computed: {
@@ -313,8 +316,12 @@ export default {
     uploads: {
       deep: true,
       handler(arr) {
-        if (arr.some(u => u.status === 'success')) {
+        const successCount = arr.filter(u => u.status === 'success').length;
+        if (successCount !== this.lastSuccessCount) {
+          this.lastSuccessCount = successCount;
+          // 新增：成功数变化时刷新统计与语料数据
           this.fetchStats();
+          this.fetchCorpusData();
         }
         if (this.uploadPage > this.uploadTotalPages) {
           this.uploadPage = this.uploadTotalPages;
@@ -554,6 +561,7 @@ export default {
 }
 
 .left-cards {
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 20px;
@@ -564,7 +572,9 @@ export default {
   display: flex;
   flex-direction: column;
   gap: 20px;
+  flex: 0 0 400px;
   width: 400px;
+  flex-shrink: 0;
 }
 
 .card {
@@ -700,16 +710,27 @@ export default {
 .corpus-list-item {
   display: grid;
   grid-template-columns:
-          minmax(50px, 0.8fr)
-          minmax(70px, 1fr)
-          minmax(200px, 2.5fr)
-          minmax(70px, 1fr)
-          minmax(120px, 1fr);
+    60px         /* ID */
+    90px         /* 文件类型 */
+    minmax(0, 1fr)/* 语料内容，占剩余空间且可收缩 */
+    80px         /* 状态 */
+    140px; /* 操作 */
   column-gap: 12px;
   align-items: center;
   text-align: center;
   padding: 10px 10px;
   box-sizing: border-box;
+}
+
+.corpus-content {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3; /* 显示 3 行，可按需调整 */
+  overflow: hidden;
+  white-space: normal;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  max-width: 100%;
 }
 
 .corpus-list-header {
