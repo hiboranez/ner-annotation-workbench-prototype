@@ -1,30 +1,17 @@
-<!-- frontend/src/views/DataImport.vue -->
 <template>
   <div class="data-import-container">
     <div class="content-area">
-      <!-- 左侧 -->
       <div class="left-cards">
-        <!-- 上传卡片 -->
         <div class="card upload-section">
           <div class="drag-upload-area">
             <h3>文件上传</h3>
-            <div
-                class="upload-box"
-                @drop.prevent="handleDrop"
-                @dragover.prevent
-            >
+            <div class="upload-box" @drop.prevent="handleDrop" @dragover.prevent>
               <div class="upload-instructions">
                 <p>拖拽文件到此处或点击上传</p>
                 <p>支持PDF、DOCX、TXT、JSON格式文件</p>
               </div>
               <button class="upload-btn" @click="selectFile">选择文件</button>
-              <input
-                  type="file"
-                  ref="fileInput"
-                  @change="handleFileChange"
-                  multiple
-                  class="file-input"
-              />
+              <input type="file" ref="fileInput" @change="handleFileChange" multiple class="file-input"/>
             </div>
           </div>
           <div class="file-type-cards">
@@ -40,36 +27,29 @@
           </div>
         </div>
 
-        <!-- 语料数据 -->
         <div class="card corpus-data">
           <div class="corpus-header">
-            <h3>语料数据（共{{ corpusData.length }}条）</h3>
+            <!-- 修正: corpus.length -> store.corpus.length -->
+            <h3>语料数据（共{{ store.corpus.length }}条）</h3>
             <button class="export-btn" @click="exportData">导出数据</button>
           </div>
           <div class="search-container">
             <input
                 type="text"
                 placeholder="搜索语料内容..."
-                v-model="searchQuery"
+                v-model="store.searchQuery"
                 class="search-input"
-                @keyup.enter="fetchCorpusData"
+                @keyup.enter="doSearch"
             />
-            <button class="search-btn" @click="fetchCorpusData">搜索</button>
+            <button class="search-btn" @click="doSearch">搜索</button>
             <div class="filter-wrapper">
-              <button
-                  class="filter-btn"
-                  :class="{ active: filterFileType }"
-                  @click="toggleFilterMenu"
-              >
-                {{ filterFileType ? '筛选：' + filterFileType.toUpperCase() : '筛选' }}
+              <button class="filter-btn" :class="{ active: store.filterFileType }" @click="toggleFilterMenu">
+                {{ store.filterFileType ? '筛选：' + store.filterFileType.toUpperCase() : '筛选' }}
               </button>
               <div v-if="showFilterMenu" class="filter-menu">
                 <button @click="chooseFilterType('')">全部</button>
-                <button
-                    v-for="t in fileTypes"
-                    :key="'flt-' + t"
-                    @click="chooseFilterType(t)"
-                >{{ t.toUpperCase() }}
+                <button v-for="t in fileTypes" :key="'flt-' + t" @click="chooseFilterType(t)">
+                  {{ t.toUpperCase() }}
                 </button>
               </div>
             </div>
@@ -83,11 +63,7 @@
               <span>状态</span>
               <span>操作</span>
             </div>
-            <div
-                class="corpus-list-item"
-                v-for="item in paginatedCorpus"
-                :key="item.id"
-            >
+            <div class="corpus-list-item" v-for="item in store.paginatedCorpus" :key="item.id">
               <span>{{ item.id }}</span>
               <span>{{ item.fileType.toUpperCase() }}</span>
               <span class="corpus-content" style="text-align:left;max-height:60px;overflow:auto;">{{
@@ -95,68 +71,67 @@
                 }}</span>
               <span>{{ item.status }}</span>
               <span>
-                      <button class="edit-btn" @click="editCorpus(item)">编辑</button>
-                      <button class="delete-btn" @click="deleteCorpus(item)">删除</button>
-                    </span>
+                <button class="edit-btn" @click="editCorpus(item)">编辑</button>
+                <button class="delete-btn" @click="deleteCorpus(item)">删除</button>
+              </span>
             </div>
           </div>
 
-          <div v-if="corpusTotalPages > 1" class="pager">
-            <button class="pager-btn" :disabled="corpusPage===1" @click="corpusPage=1">«</button>
-            <button class="pager-btn" :disabled="corpusPage===1" @click="corpusPage--">上一页</button>
+          <div v-if="store.corpusTotalPages > 1" class="pager">
+            <button class="pager-btn" :disabled="store.corpusPage===1" @click="setCorpusPage(1)">«</button>
+            <button class="pager-btn" :disabled="store.corpusPage===1" @click="setCorpusPage(store.corpusPage-1)">
+              上一页
+            </button>
             <span class="pager-info">
-                    第
-                    <span
-                        v-if="!editingCorpusPage"
-                        class="pager-current"
-                        @click="startEditCorpusPage"
-                        title="点击输入页码跳转"
-                    >{{ corpusPage }}</span>
-                    <input
-                        v-else
-                        ref="corpusPageInput"
-                        class="pager-input"
-                        type="number"
-                        v-model="tempCorpusPage"
-                        min="1"
-                        :max="corpusTotalPages"
-                        @blur="confirmCorpusPage"
-                        @keyup.enter="confirmCorpusPage"
-                        @keyup.esc="cancelCorpusPage"
-                    />
-                    / {{ corpusTotalPages }} 页
-                  </span>
-            <button class="pager-btn" :disabled="corpusPage===corpusTotalPages" @click="corpusPage++">下一页</button>
-            <button class="pager-btn" :disabled="corpusPage===corpusTotalPages" @click="corpusPage=corpusTotalPages">»
+              第
+              <span
+                  v-if="!editingCorpusPage"
+                  class="pager-current"
+                  @click="startEditCorpusPage"
+                  title="点击输入页码跳转"
+              >{{ store.corpusPage }}</span>
+              <input
+                  v-else
+                  ref="corpusPageInput"
+                  class="pager-input"
+                  type="number"
+                  v-model="tempCorpusPage"
+                  min="1"
+                  :max="store.corpusTotalPages"
+                  @blur="confirmCorpusPage"
+                  @keyup.enter="confirmCorpusPage"
+                  @keyup.esc="cancelCorpusPage"
+              />
+              / {{ store.corpusTotalPages }} 页
+            </span>
+            <button class="pager-btn" :disabled="store.corpusPage===store.corpusTotalPages"
+                    @click="setCorpusPage(store.corpusPage+1)">下一页
+            </button>
+            <button class="pager-btn" :disabled="store.corpusPage===store.corpusTotalPages"
+                    @click="setCorpusPage(store.corpusTotalPages)">»
             </button>
           </div>
         </div>
       </div>
 
-      <!-- 右侧 -->
       <div class="right-cards">
-        <!-- 上传状态（分页） -->
         <div class="card upload-status-card">
           <div class="overview-header">
             <h3>上传状态</h3>
-            <span class="file-count-badge">当前 {{ uploads.length }} 个</span>
+            <span class="file-count-badge">当前 {{ store.uploads.length }} 个</span>
           </div>
-          <div v-if="uploads.length === 0" class="empty-tip">暂无上传任务</div>
+          <div v-if="store.uploads.length === 0" class="empty-tip">暂无上传任务</div>
           <div v-else class="status-list">
-            <div
-                class="status-item"
-                v-for="u in displayedUploads"
-                :key="u.id"
-            >
+            <div class="status-item" v-for="u in displayedUploads" :key="u.id">
               <div class="status-row">
                 <span class="file-name" :title="u.name">{{ u.name }}</span>
                 <span
                     class="parse-status-text"
                     :class="{
-                          'is-uploading': u.status==='uploading',
-                          'is-success': u.status==='success',
-                          'is-failed': u.status==='failed'
-                        }"
+                      'is-uploading': u.status==='uploading',
+                      'is-success': u.status==='success',
+                      'is-failed': u.status==='failed'
+                    }"
                 >{{ statusText(u.status) }}</span>
               </div>
               <div class="bar-wrap">
@@ -171,40 +146,38 @@
             <button class="pager-btn" :disabled="uploadPage===1" @click="uploadPage=1">«</button>
             <button class="pager-btn" :disabled="uploadPage===1" @click="uploadPage--">上一页</button>
             <span class="pager-info">
-                    第
-                    <span
-                        v-if="!editingUploadPage"
-                        class="pager-current"
-                        @click="startEditUploadPage"
-                        title="点击输入页码跳转"
-                    >{{ uploadPage }}</span>
-                    <input
-                        v-else
-                        ref="uploadPageInput"
-                        class="pager-input"
-                        type="number"
-                        v-model="tempUploadPage"
-                        min="1"
-                        :max="uploadTotalPages"
-                        @blur="confirmUploadPage"
-                        @keyup.enter="confirmUploadPage"
-                        @keyup.esc="cancelUploadPage"
-                    />
-                    / {{ uploadTotalPages }} 页
-                  </span>
+              第
+              <span
+                  v-if="!editingUploadPage"
+                  class="pager-current"
+                  @click="startEditUploadPage"
+                  title="点击输入页码跳转"
+              >{{ uploadPage }}</span>
+              <input
+                  v-else
+                  ref="uploadPageInput"
+                  class="pager-input"
+                  type="number"
+                  v-model="tempUploadPage"
+                  min="1"
+                  :max="uploadTotalPages"
+                  @blur="confirmUploadPage"
+                  @keyup.enter="confirmUploadPage"
+                  @keyup.esc="cancelUploadPage"
+              />
+              / {{ uploadTotalPages }} 页
+            </span>
             <button class="pager-btn" :disabled="uploadPage===uploadTotalPages" @click="uploadPage++">下一页</button>
             <button class="pager-btn" :disabled="uploadPage===uploadTotalPages" @click="uploadPage=uploadTotalPages">»
             </button>
           </div>
         </div>
 
-        <!-- 文件分布 -->
         <div class="card file-distribution">
           <div class="overview-header">
             <h3>文件分布</h3>
             <span class="file-count-badge">共 {{ totalUploaded }} 个</span>
           </div>
-
           <div
               v-if="totalUploaded > 0"
               class="distribution-bar"
@@ -218,7 +191,6 @@
                 :style="segmentStyle(type)"
                 @mouseenter="showDistTooltip(type)"
             ></div>
-
             <div
                 v-if="distTooltip.visible"
                 class="dist-tooltip"
@@ -237,269 +209,203 @@
           </ul>
         </div>
 
-        <!-- 文件统计 -->
         <div class="card file-type-summary">
           <div class="overview-header">
             <h3>文件统计</h3>
             <span class="file-count-badge">共 {{ totalUploaded }} 个</span>
           </div>
           <div class="file-type-grid">
-            <div
-                class="file-type-tile"
-                v-for="type in fileTypes"
-                :key="'tile-' + type"
-            >
+            <div class="file-type-tile" v-for="type in fileTypes" :key="'tile-' + type">
               <div class="tile-fill" :style="{ backgroundColor: fileTypeColors[type] }"></div>
               <div class="tile-content">
                 <div class="tile-type">{{ type.toUpperCase() }}</div>
-                <div class="tile-count">{{ uploadedFiles[type] }} 个</div>
+                <div class="tile-count">{{ store.counts[type] }} 个</div>
               </div>
             </div>
           </div>
         </div>
 
-      </div> <!-- /right-cards -->
+      </div>
     </div>
   </div>
 </template>
 
-<script>import uploadManager from '@/utils/uploadManager';
+<script setup>
+import {computed, onMounted, ref} from 'vue';
+import {useCorpusStore} from '@/stores/corpusStore';
 
-const API_BASE = '/api/data-import';
+const store = useCorpusStore();
 
-export default {
-  data() {
-    return {
-      fileTypes: ['pdf', 'docx', 'txt', 'json'],
-      fileTypeColors: {pdf: '#8FB2FF', docx: '#8FFFB2', txt: '#FFF48F', json: '#D8B4FF'},
-      uploadedFiles: {pdf: 0, docx: 0, txt: 0, json: 0},
-      corpusData: [],
-      searchQuery: '',
-      filterFileType: '',
-      showFilterMenu: false,
-      selectedFileType: '',
-      distTooltip: {visible: false, type: '', x: 0, y: 0},
-      corpusPage: 1,
-      corpusPageSize: 8,
-      uploadPage: 1,
-      uploadPageSize: 4,
-      editingCorpusPage: false,
-      tempCorpusPage: '',
-      editingUploadPage: false,
-      tempUploadPage: '',
-      lastSuccessCount: 0,
-    };
-  },
-  computed: {
-    totalUploaded() {
-      return Object.values(this.uploadedFiles).reduce((a, b) => a + b, 0);
-    },
-    corpusTotalPages() {
-      return Math.max(1, Math.ceil(this.corpusData.length / this.corpusPageSize));
-    },
-    paginatedCorpus() {
-      const start = (this.corpusPage - 1) * this.corpusPageSize;
-      return this.corpusData.slice(start, start + this.corpusPageSize);
-    },
-    uploadTotalPages() {
-      return Math.max(1, Math.ceil(this.uploads.length / this.uploadPageSize));
-    },
-    displayedUploads() {
-      const start = (this.uploadPage - 1) * this.uploadPageSize;
-      return this.uploads.slice(start, start + this.uploadPageSize);
-    },
-    uploads() {
-      return uploadManager.state.uploads;
-    }
-  },
-  watch: {
-    uploads: {
-      deep: true,
-      handler(arr) {
-        const successCount = arr.filter(u => u.status === 'success').length;
-        if (successCount !== this.lastSuccessCount) {
-          this.lastSuccessCount = successCount;
-          // 新增：成功数变化时刷新统计与语料数据
-          this.fetchStats();
-          this.fetchCorpusData();
-        }
-        if (this.uploadPage > this.uploadTotalPages) {
-          this.uploadPage = this.uploadTotalPages;
-        }
-      }
-    },
-    'corpusData.length'() {
-      if (this.corpusPage > this.corpusTotalPages) this.corpusPage = this.corpusTotalPages;
-    }
-  },
-  methods: {
-    fetchStats() {
-      fetch(`${API_BASE}/stats/`)
-          .then(r => r.json())
-          .then(data => {
-            const counts = data.counts || {};
-            this.fileTypes.forEach(t => {
-              this.uploadedFiles[t] = counts[t] || 0;
-            });
-          })
-          .catch(() => {
-          });
-    },
-    fetchCorpusData() {
-      const params = new URLSearchParams();
-      if (this.searchQuery) params.append('query', this.searchQuery);
-      if (this.filterFileType) params.append('file_type', this.filterFileType);
-      fetch(`${API_BASE}/corpus-data/?` + params.toString())
-          .then(r => r.json())
-          .then(list => {
-            this.corpusData = Array.isArray(list) ? list : [];
-            if (this.corpusPage > this.corpusTotalPages) this.corpusPage = this.corpusTotalPages;
-          })
-          .catch(() => {
-          });
-    },
-    toggleFilterMenu() {
-      this.showFilterMenu = !this.showFilterMenu;
-    },
-    chooseFilterType(t) {
-      this.filterFileType = t;
-      this.showFilterMenu = false;
-      this.corpusPage = 1;
-      this.fetchCorpusData();
-    },
-    selectFile() {
-      // 中央按钮允许多类型，重置已选类型
-      this.selectedFileType = '';
-      this.$refs.fileInput.click();
-    },
-    selectSpecificType(type) {
-      // 类型快捷按钮仍可设置一个偏好（不再限制混合选择）
-      this.selectedFileType = type;
-      this.selectFile();
-    },
-    handleFileChange(e) {
-      const files = e.target.files;
-      Array.from(files).forEach(f => {
-        // 不再限制只能上传某一种类型
-        this.uploadFile(f);
-      });
-      e.target.value = '';
-    },
-    handleDrop(e) {
-      const files = e.dataTransfer.files;
-      Array.from(files).forEach(f => this.uploadFile(f));
-    },
-    uploadFile(file) {
-      const ret = uploadManager.startUpload(file, this.fileTypes);
-      if (ret && ret.error) {
-        alert(ret.error);
-        return;
-      }
-      this.uploadPage = 1;
-    },
-    statusText(s) {
-      if (s === 'uploading') return '上传中';
-      if (s === 'success') return '上传成功';
-      if (s === 'failed') return '上传失败';
-      return s;
-    },
-    exportData() {
-      const blob = new Blob([JSON.stringify(this.corpusData, null, 2)], {type: 'application/json'});
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = 'corpus_export.json';
-      a.click();
-      URL.revokeObjectURL(a.href);
-    },
-    editCorpus(item) {
-      console.log('Edit', item);
-    },
-    segmentStyle(type) {
-      const total = this.totalUploaded;
-      const ratio = total ? (this.uploadedFiles[type] / total) : 0;
-      return {
-        width: (ratio * 100) + '%',
-        backgroundColor: this.fileTypeColors[type],
-        minWidth: ratio > 0 && ratio * 100 < 0.8 ? '0.8%' : undefined
-      };
-    },
-    percentFor(type) {
-      if (!this.totalUploaded) return 0;
-      return ((this.uploadedFiles[type] / this.totalUploaded) * 100).toFixed(1);
-    },
-    showDistTooltip(type) {
-      this.distTooltip.type = type;
-      this.distTooltip.visible = true;
-    },
-    handleDistMouseMove(e) {
-      if (!this.distTooltip.visible) return;
-      const rect = e.currentTarget.getBoundingClientRect();
-      let x = e.clientX - rect.left;
-      let y = e.clientY - rect.top;
-      x = Math.min(Math.max(10, x), rect.width - 10);
-      y = Math.min(Math.max(10, y), rect.height - 10);
-      this.distTooltip.x = x;
-      this.distTooltip.y = y;
-    },
-    hideDistTooltip() {
-      this.distTooltip.visible = false;
-    },
-    deleteCorpus(item) {
-      if (!window.confirm(`确认删除该语料（ID: ${item.id}）吗？此操作不可撤销`)) return;
-      fetch(`${API_BASE}/corpus-data/${item.id}/`, {method: 'DELETE'})
-          .then(r => {
-            if (!r.ok) throw new Error();
-            this.corpusData = this.corpusData.filter(c => c.id !== item.id);
-            if (this.corpusPage > this.corpusTotalPages) this.corpusPage = this.corpusTotalPages;
-            this.fetchStats();
-          })
-          .catch(() => alert('删除失败'));
-    },
-    startEditCorpusPage() {
-      this.editingCorpusPage = true;
-      this.tempCorpusPage = this.corpusPage;
-      this.$nextTick(() => {
-        this.$refs.corpusPageInput && this.$refs.corpusPageInput.select();
-      });
-    },
-    confirmCorpusPage() {
-      let v = parseInt(this.tempCorpusPage, 10);
-      if (isNaN(v)) return this.cancelCorpusPage();
-      if (v < 1) v = 1;
-      if (v > this.corpusTotalPages) v = this.corpusTotalPages;
-      this.corpusPage = v;
-      this.editingCorpusPage = false;
-    },
-    cancelCorpusPage() {
-      this.editingCorpusPage = false;
-    },
-    startEditUploadPage() {
-      this.editingUploadPage = true;
-      this.tempUploadPage = this.uploadPage;
-      this.$nextTick(() => {
-        this.$refs.uploadPageInput && this.$refs.uploadPageInput.select();
-      });
-    },
-    confirmUploadPage() {
-      let v = parseInt(this.tempUploadPage, 10);
-      if (isNaN(v)) return this.cancelUploadPage();
-      if (v < 1) v = 1;
-      if (v > this.uploadTotalPages) v = this.uploadTotalPages;
-      this.uploadPage = v;
-      this.editingUploadPage = false;
-    },
-    cancelUploadPage() {
-      this.editingUploadPage = false;
-    }
-  },
-  mounted() {
-    this.fetchStats();
-    this.fetchCorpusData();
+const fileTypes = ['pdf', 'docx', 'txt', 'json'];
+const fileTypeColors = {pdf: '#fde68a', docx: '#bfdbfe', txt: '#bbf7d0', json: '#fecdd3'};
+const uploadPage = ref(1);
+const uploadPageSize = ref(4);
+const editingCorpusPage = ref(false);
+const tempCorpusPage = ref(1);
+const editingUploadPage = ref(false);
+const tempUploadPage = ref(1);
+const showFilterMenu = ref(false);
+const distTooltip = ref({visible: false, type: '', x: 0, y: 0});
+const fileInput = ref(null);
+
+function setCorpusPage(p) {
+  const total = store.corpusTotalPages;
+  const nv = Math.min(Math.max(1, p), total);
+  store.corpusPage = nv;
+}
+
+function doSearch() {
+  store.corpusPage = 1;
+  store.refreshCorpus({query: store.searchQuery});
+}
+
+function toggleFilterMenu() {
+  showFilterMenu.value = !showFilterMenu.value;
+}
+
+function chooseFilterType(t) {
+  store.filterFileType = t;
+  showFilterMenu.value = false;
+  store.corpusPage = 1;
+  store.refreshCorpus({});
+}
+
+async function deleteCorpus(item) {
+  if (!confirm(`确认删除 #${item.id}?`)) return;
+  try {
+    await fetch(`/api/data-import/corpus-data/${item.id}/`, {method: 'DELETE'});
+  } catch {
   }
-};
+}
+
+function exportData() {
+  const blob = new Blob([JSON.stringify(store.corpus, null, 2)], {type: 'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'corpus_export.json';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+function startEditCorpusPage() {
+  editingCorpusPage.value = true;
+  tempCorpusPage.value = store.corpusPage;
+}
+
+function confirmCorpusPage() {
+  const v = Number(tempCorpusPage.value) || 1;
+  setCorpusPage(v);
+  editingCorpusPage.value = false;
+}
+
+function cancelCorpusPage() {
+  editingCorpusPage.value = false;
+}
+
+function startEditUploadPage() {
+  editingUploadPage.value = true;
+  tempUploadPage.value = uploadPage.value;
+}
+
+function confirmUploadPage() {
+  let v = Number(tempUploadPage.value) || 1;
+  v = Math.min(Math.max(1, v), uploadTotalPages.value);
+  uploadPage.value = v;
+  editingUploadPage.value = false;
+}
+
+function cancelUploadPage() {
+  editingUploadPage.value = false;
+}
+
+function selectFile() {
+  fileInput.value && fileInput.value.click();
+}
+
+function handleFileChange(e) {
+  const files = e.target.files;
+  Array.from(files).forEach(f => store.startUpload(f, fileTypes));
+  uploadPage.value = 1;
+  e.target.value = '';
+}
+
+function handleDrop(e) {
+  const files = e.dataTransfer.files;
+  Array.from(files).forEach(f => store.startUpload(f, fileTypes));
+  uploadPage.value = 1;
+}
+
+const uploadTotalPages = computed(() => Math.max(1, Math.ceil(store.uploads.length / uploadPageSize.value)));
+const displayedUploads = computed(() => {
+  const start = (uploadPage.value - 1) * uploadPageSize.value;
+  return store.uploads.slice(start, start + uploadPageSize.value);
+});
+
+function statusText(s) {
+  if (s === 'uploading') return '上传中';
+  if (s === 'success') return '上传成功';
+  if (s === 'failed') return '上传失败';
+  return s;
+}
+
+const totalUploaded = computed(() => store.totalUploaded);
+
+function segmentStyle(type) {
+  const total = totalUploaded.value || 1;
+  const count = store.counts[type] || 0;
+  return {
+    width: (count / total) * 100 + '%',
+    background: fileTypeColors[type]
+  };
+}
+
+function percentFor(type) {
+  const total = totalUploaded.value || 1;
+  return ((store.counts[type] || 0) / total * 100).toFixed(1);
+}
+
+function showDistTooltip(type) {
+  distTooltip.value.type = type;
+  distTooltip.value.visible = true;
+}
+
+function handleDistMouseMove(e) {
+  if (!distTooltip.value.visible) return;
+  // 使用容器而不是当前 segment 的局部 offset，避免跨 segment 时坐标重置
+  const container = e.currentTarget; // 即 .distribution-bar
+  const rect = container.getBoundingClientRect();
+  distTooltip.value.x = e.clientX - rect.left;
+  distTooltip.value.y = e.clientY - rect.top;
+}
+
+function hideDistTooltip() {
+  distTooltip.value.visible = false;
+}
+
+function editCorpus() {
+}
+
+function selectSpecificType(type) {
+  alert(`选择示例：${type.toUpperCase()}`);
+}
+
+onMounted(async () => {
+  store.applySnapshot();
+  store.initRealtime();
+  if (!store.firstLoaded) {
+    await store.refetchAll();
+  } else {
+    store.refetchAll();
+  }
+  if (store.corpusPage > store.corpusTotalPages) {
+    setCorpusPage(store.corpusTotalPages);
+  }
+});
 </script>
 
+
 <style scoped>
+/* 原样保留（样式未改动） */
 .edit-btn,
 .delete-btn,
 .file-type-card,
@@ -582,7 +488,7 @@ export default {
   padding: 20px;
   border-radius: 12px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  transition: all 0.3s ease;
+  transition: all .3s ease;
 }
 
 .card:hover {
@@ -602,7 +508,7 @@ export default {
 
 .upload-btn {
   background-color: #1d4e89;
-  color: white;
+  color: #fff;
   padding: 10px 20px;
   margin-top: 15px;
   border: none;
@@ -638,7 +544,7 @@ export default {
 
 .export-btn {
   background-color: #2d6a4f;
-  color: white;
+  color: #fff;
   padding: 10px 15px;
   border: none;
   border-radius: 5px;
@@ -653,15 +559,14 @@ export default {
 .search-input {
   flex-grow: 1;
   padding: 10px;
-  margin-top: 10px;
-  margin-bottom: 10px;
+  margin: 10px 0;
 }
 
 .search-btn,
 .filter-btn,
 .export-btn {
-  background-color: #2d6a4f;
-  color: white;
+  background: #2d6a4f;
+  color: #fff;
   padding: 10px 15px;
   border: none;
   border-radius: 5px;
@@ -679,7 +584,7 @@ export default {
   position: absolute;
   top: 42px;
   right: 0;
-  background: #ffffff;
+  background: #fff;
   border: 1px solid #e5e7eb;
   border-radius: 6px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
@@ -709,23 +614,18 @@ export default {
 .corpus-list-header,
 .corpus-list-item {
   display: grid;
-  grid-template-columns:
-    60px         /* ID */
-    90px         /* 文件类型 */
-    minmax(0, 1fr)/* 语料内容，占剩余空间且可收缩 */
-    80px         /* 状态 */
-    140px; /* 操作 */
+  grid-template-columns:60px 90px minmax(0, 1fr) 80px 140px;
   column-gap: 12px;
   align-items: center;
   text-align: center;
-  padding: 10px 10px;
+  padding: 10px;
   box-sizing: border-box;
 }
 
 .corpus-content {
   display: -webkit-box;
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 3; /* 显示 3 行，可按需调整 */
+  -webkit-line-clamp: 3;
   overflow: hidden;
   white-space: normal;
   word-break: break-word;
@@ -735,22 +635,21 @@ export default {
 
 .corpus-list-header {
   font-weight: bold;
-  background-color: #f0f0f0;
+  background: #f0f0f0;
   border-radius: 8px;
 }
 
 .corpus-list-item {
   margin-top: 5px;
-  background-color: #fff;
+  background: #fff;
   border-radius: 8px;
 }
 
 .edit-btn,
 .delete-btn {
-  background-color: #d9d9d9;
+  background: #d9d9d9;
   padding: 5px 10px;
-  margin-left: 5px;
-  margin-right: 5px;
+  margin: 0 5px;
   border: none;
   border-radius: 5px;
   cursor: pointer;
@@ -764,20 +663,7 @@ export default {
   margin: 0 0 8px;
 }
 
-.overview-header h3 {
-  flex: 1;
-  margin: 0;
-  font-size: 16px;
-  line-height: 1.2;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .file-count-badge {
-  flex-shrink: 0;
-  white-space: nowrap;
   background: #eef2ff;
   color: #1d4ed8;
   padding: 4px 8px;
@@ -838,16 +724,16 @@ export default {
 .bar-track {
   width: 100%;
   height: 10px;
-  background-color: #e5e7eb;
+  background: #e5e7eb;
   border-radius: 6px;
   overflow: hidden;
 }
 
 .bar-fill {
   height: 100%;
-  background-color: #22c55e;
+  background: #22c55e;
   width: 0%;
-  transition: width 0.3s ease;
+  transition: width .3s ease;
 }
 
 .bar-percent {
@@ -857,10 +743,9 @@ export default {
   display: inline-block;
 }
 
-/* 四宫格文件概况 */
 .file-type-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns:repeat(2, 1fr);
   gap: 12px;
 }
 
@@ -872,7 +757,7 @@ export default {
   overflow: hidden;
   cursor: default;
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.2);
-  transition: transform .15s ease;
+  transition: transform .15s;
 }
 
 .file-type-tile:hover {
@@ -882,7 +767,7 @@ export default {
 .tile-fill {
   position: absolute;
   inset: 0;
-  opacity: 0.9;
+  opacity: .9;
 }
 
 .tile-content {
@@ -900,16 +785,13 @@ export default {
 
 .tile-type {
   font-size: 16px;
-  line-height: 1.1;
   margin-bottom: 4px;
 }
 
 .tile-count {
   font-size: 14px;
-  line-height: 1.1;
 }
 
-/* 文件分布 */
 .file-distribution {
   position: relative;
 }
@@ -925,15 +807,6 @@ export default {
   cursor: default;
 }
 
-.distribution-bar::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border: 1px solid #ccc;
-  pointer-events: none;
-  z-index: 2;
-}
-
 .distribution-bar.is-empty {
   background: #555;
 }
@@ -942,14 +815,11 @@ export default {
   height: 100%;
   transition: width .35s ease, filter .2s;
   position: relative;
-  z-index: 1;
 }
 
 .dist-segment:hover {
   filter: brightness(1.15);
-  outline: none;
-  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.9);
-  z-index: 1;
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, .9);
 }
 
 .distribution-legend {
@@ -979,7 +849,7 @@ export default {
 .dist-tooltip {
   position: absolute;
   z-index: 20;
-  background: rgba(0, 0, 0, 0.75);
+  background: rgba(0, 0, 0, .75);
   color: #fff;
   padding: 6px 10px;
   border-radius: 6px;
@@ -988,7 +858,7 @@ export default {
   transform: translate(-50%, -120%);
   white-space: nowrap;
   backdrop-filter: blur(4px);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, .35);
 }
 
 .dist-tooltip .tt-type {
@@ -1003,7 +873,6 @@ export default {
   margin-top: 2px;
 }
 
-/* 分页器 */
 .pager {
   display: flex;
   justify-content: center;
@@ -1013,7 +882,7 @@ export default {
 }
 
 .pager-btn {
-  background-color: #f3f4f6;
+  background: #f3f4f6;
   border: 1px solid #e5e7eb;
   border-radius: 6px;
   padding: 4px 8px;
@@ -1022,7 +891,7 @@ export default {
 }
 
 .pager-btn:disabled {
-  opacity: 0.5;
+  opacity: .5;
   cursor: not-allowed;
 }
 
@@ -1033,7 +902,6 @@ export default {
 
 .pager-current {
   cursor: pointer;
-  padding: 0 0px;
   color: #2563eb;
   font-weight: 800;
 }

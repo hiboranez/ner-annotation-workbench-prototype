@@ -6,15 +6,23 @@ export default defineConfig({
     plugins: [vue()],
     resolve: {
         alias: {
-            '@': path.resolve(new URL('.', import.meta.url).pathname, 'src') // 替代 __dirname
+            '@': path.resolve(__dirname, 'src')
         }
     },
     server: {
+        host: true,
+        port: 5173,
         proxy: {
+            // 后端 API
             '/api': {
                 target: 'http://127.0.0.1:8000',
-                changeOrigin: true,
-                // rewrite: path => path.replace(/^\/api/, '') // 仅在后端无 /api 前缀时使用
+                changeOrigin: true
+            },
+            // 关键修复: 代理 Channels WebSocket
+            '/ws': {
+                target: 'ws://127.0.0.1:8000',
+                ws: true,
+                changeOrigin: true
             }
         }
     }
