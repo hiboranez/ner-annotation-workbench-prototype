@@ -1,39 +1,45 @@
 #!/usr/bin/env bash
-# 后端单独启动脚本
-
+# 开发环境: 仅用 Daphne 启动后端 (Channels + WebSocket)，前端继续用 Vite。
+# 使用: bash scripts/backend.sh
 set -Eeuo pipefail
 
-cd "./backend"
+cd "$(dirname "$0")/../backend"
 
 PYTHON="${PYTHON:-python}"
 HOST="${DJANGO_HOST:-127.0.0.1}"
 PORT="${DJANGO_PORT:-8000}"
 
-echo "[backend] 使用解释器: $("$PYTHON" -c 'import sys;print(sys.executable)')"
+if ! command -v daphne >/dev/null 2>&1; then
+  echo "[daphne_dev] 未找到 daphne，请先安装: pip install daphne"
+  exit 1
+fi
 
-echo "[backend] 迁移数据库(若需要)..."
+echo "[daphne_dev] Python解释器: $("$PYTHON" -c 'import sys;print(sys.executable)')"
+echo "[daphne_dev] 应用迁移..."
 $PYTHON manage.py migrate --noinput
 
-# Redis 探测
+# 探测 Redis (用于 Channels 与 Celery)
 REDIS_HOST="${REDIS_HOST:-127.0.0.1}"
 REDIS_PORT="${REDIS_PORT:-6379}"
-if python - <<EOF 2>/dev/null
-import socket
-s=socket.socket()
-s.settimeout(0.5)
+if $PYTHON - <<EOF 2>/dev/null
+import socket,os
+s=socket.socket();s.settimeout(0.5)
 try:
     s.connect(("${REDIS_HOST}", int("${REDIS_PORT}")))
-    print("ok")
-except Exception:
+    print("OK")
+except:
     pass
 EOF
 then
-  echo "[backend] 检测到 Redis (${REDIS_HOST}:${REDIS_PORT})，启用异步解析"
+  echo "[daphne_dev] Redis 已检测到: ${REDIS_HOST}:${REDIS_PORT}"
+  echo "[daphne_dev] 异步解析开启 (Celery 可用时再运行: bash scripts/celery.sh)"
 else
-  echo "[backend] 未检测到 Redis，启用同步解析模式(SYNC_PARSE=1)"
+  echo "[daphne_dev] 未检测到 Redis，回退同步解析 (导出 SYNC_PARSE=1)"
   export SYNC_PARSE=1
 fi
 
-echo "[backend] 启动 Django runserver: ${HOST}:${PORT}"
-echo "[backend] (Ctrl+C 退出)"
-exec $PYTHON -W default manage.py runserver "${HOST}:${PORT}"
+export DJANGO_SETTINGS_MODULE="config.settings"
+
+echo "[daphne_dev] 启动 Daphne ${HOST}:${PORT}"
+echo "[daphne_dev] 停止: Ctrl+C"
+exec daphne -b "${HOST}" -p "${PORT}" config.asgi:application
