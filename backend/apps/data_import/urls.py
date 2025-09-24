@@ -1,10 +1,13 @@
 from django.urls import path
 
-from . import views
+from .views import stats_view, corpus_list, corpus_delete, cache_refresh_view, upload_view
+
+app_name = "data_import"
 
 urlpatterns = [
-    path('upload/', views.upload_data, name='upload_data'),
-    path('corpus-data/', views.corpus_data, name='corpus_data'),
-    path('corpus-data/<int:pk>/', views.corpus_detail, name='corpus_detail'),
-    path('stats/', views.stats, name='stats'),
+    path("stats/", stats_view, name="stats"),
+    path("corpus-data/", corpus_list, name="corpus-list"),
+    path("corpus-data/<int:pk>/", corpus_delete, name="corpus-delete"),
+    path("cache/refresh/", cache_refresh_view, name="cache-refresh"),
+    path("upload/", upload_view, name="upload"),
 ]

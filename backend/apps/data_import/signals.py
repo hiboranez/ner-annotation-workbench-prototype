@@ -1,8 +1,10 @@
+# python
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 
+from .cache_utils import invalidate_all_corpus_caches
 from .models import CorpusData
 from .statistics import build_stats
 
@@ -48,6 +50,8 @@ def corpus_saved(sender, instance: CorpusData, created, **kwargs):
     _broadcast_corpus("corpus.created" if created else "corpus.updated", instance,
                       include_content=bool(instance.content))
     _broadcast_stats()
+    # 缓存失效：stats、recent、search
+    invalidate_all_corpus_caches()
 
 
 @receiver(post_delete, sender=CorpusData)
@@ -64,3 +68,5 @@ def corpus_deleted(sender, instance: CorpusData, **kwargs):
         },
     )
     _broadcast_stats()
+    # 缓存失效：stats、recent、search
+    invalidate_all_corpus_caches()

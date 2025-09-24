@@ -1,3 +1,4 @@
+# python
 import os
 from pathlib import Path
 
@@ -16,6 +17,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "rest_framework",
     "channels",
+    "django_filters",
     "apps.data_import",
     "apps.data_overview",
     "apps.data_annotation",
@@ -24,9 +26,9 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
-    # 若需 WhiteNoise 可在此加入 'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
+    'apps.data_import.exceptions.ApiExceptionMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
@@ -52,32 +54,46 @@ TEMPLATES = [{
 ASGI_APPLICATION = "config.asgi.application"
 WSGI_APPLICATION = 'config.wsgi.application'
 
-# Channels
-CHANNEL_LAYERS = {
-    "default": {
-        "BACKEND": "channels_redis.core.RedisChannelLayer",
-        "CONFIG": {"hosts": [("127.0.0.1", 6379)]},
-    }
-}
-
 REDIS_HOST = os.getenv("REDIS_HOST", "127.0.0.1")
 REDIS_PORT = int(os.getenv("REDIS_PORT", "6379"))
 
+# Redis DB 划分：channels=0, celery(broker)=1, celery(result)=2, cache=3(可配)
+REDIS_CACHE_DB = int(os.getenv("REDIS_CACHE_DB", "3"))
+
 CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels_redis.core.RedisChannelLayer",
-        "CONFIG": {"hosts": [(REDIS_HOST, REDIS_PORT)]},
+        "CONFIG": {"hosts": [(REDIS_HOST, REDIS_PORT, 0)]},  # 显式指定 DB=0
     }
 }
 
 CELERY_BROKER_URL = f"redis://{REDIS_HOST}:{REDIS_PORT}/1"
 CELERY_RESULT_BACKEND = f"redis://{REDIS_HOST}:{REDIS_PORT}/2"
-
-# Celery
-CELERY_BROKER_URL = "redis://127.0.0.1:6379/1"
-CELERY_RESULT_BACKEND = "redis://127.0.0.1:6379/2"
 CELERY_TASK_TIME_LIMIT = 300
 CELERY_TASK_SOFT_TIME_LIMIT = 280
+
+# Django 缓存：Redis（内置 RedisCache 后端）
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.redis.RedisCache",
+        "LOCATION": f"redis://{REDIS_HOST}:{REDIS_PORT}/{REDIS_CACHE_DB}",
+        "TIMEOUT": None,
+        "KEY_PREFIX": os.getenv("CACHE_KEY_PREFIX", "app"),
+        # 不要添加 OPTIONS.client_class / CLIENT_CLASS 等第三方参数
+        # 可选的 redis‑py 参数（如需）示例：
+        # "OPTIONS": {
+        #     "socket_connect_timeout": 2,
+        #     "socket_timeout": 2,
+        # }
+    }
+}
+
+# 业务缓存 TTL 配置（秒）
+APP_CACHE_TTLS = {
+    "STATS_GLOBAL_TTL": int(os.getenv("STATS_GLOBAL_TTL", "60")),
+    "RECENT_CORPUS_TTL": int(os.getenv("RECENT_CORPUS_TTL", "60")),
+    "SEARCH_TTL": int(os.getenv("SEARCH_TTL", "300")),
+}
 
 DATABASES = {
     'default': {
@@ -98,19 +114,14 @@ TIME_ZONE = 'UTC'
 USE_I18N = True
 USE_TZ = True
 
-# Static / Media
 STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / "staticfiles"
-# 可选: 若前端构建复制到 backend/frontend_dist
-# STATICFILES_DIRS = [BASE_DIR / "frontend_dist"]
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# 反向代理信任与 HTTPS 识别
 USE_X_FORWARDED_HOST = True
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
-# 安全(生产可开启)
 SECURE_SSL_REDIRECT = os.getenv("SECURE_SSL_REDIRECT", "0") == "1"
 SESSION_COOKIE_SECURE = not DEBUG
 CSRF_COOKIE_SECURE = not DEBUG
@@ -118,7 +129,23 @@ SECURE_HSTS_SECONDS = 63072000 if not DEBUG else 0
 SECURE_HSTS_INCLUDE_SUBDOMAINS = not DEBUG
 SECURE_HSTS_PRELOAD = not DEBUG
 
-# CSRF 信任域 (逗号分隔环境变量)
 _csrf_hosts = os.getenv("CSRF_TRUSTED_ORIGINS", "")
 if _csrf_hosts:
     CSRF_TRUSTED_ORIGINS = [h if h.startswith("http") else f"https://{h}" for h in _csrf_hosts.split(",")]
+
+REST_FRAMEWORK = {
+    "DEFAULT_PAGINATION_CLASS": "apps.data_import.pagination.StandardPagination",
+    "PAGE_SIZE": 20,
+    "DEFAULT_FILTER_BACKENDS": [
+        "django_filters.rest_framework.DjangoFilterBackend",
+        "rest_framework.filters.SearchFilter",
+        "rest_framework.filters.OrderingFilter"
+    ],
+    "EXCEPTION_HANDLER": "apps.data_import.exceptions.drf_exception_handler"
+}
+
+# === WebSocket / WS 协议与鉴权可调参数 ===
+WS_SHARED_TOKEN = os.getenv("WS_SHARED_TOKEN", "")
+WS_TOKEN_MAX_AGE = int(os.getenv("WS_TOKEN_MAX_AGE", "86400"))
+WS_MAX_SEND_PER_SEC = int(os.getenv("WS_MAX_SEND_PER_SEC", "25"))
+WS_NAMESPACE = os.getenv("WS_NAMESPACE", "public")

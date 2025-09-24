@@ -3,7 +3,7 @@
 # 使用: bash scripts/backend.sh
 set -Eeuo pipefail
 
-cd "$(dirname "$0")/../backend"
+cd "$(dirname "$0")/../../backend"
 
 PYTHON="${PYTHON:-python}"
 HOST="${DJANGO_HOST:-127.0.0.1}"
