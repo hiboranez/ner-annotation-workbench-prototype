@@ -1,10 +1,11 @@
+# backend/apps/data_import/views.py
 # python
 
 import os
 import uuid
 
 from django.conf import settings
-from django.db.models import Q
+from django.contrib.postgres.search import TrigramSimilarity
 from django.http import JsonResponse, Http404
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.decorators import parser_classes
@@ -98,7 +99,12 @@ def corpus_list(request):
         if file_type:
             qs = qs.filter(fileType=file_type)
         if query:
-            qs = qs.filter(Q(content__icontains=query) | Q(original_filename__icontains=query))
+            # 使用 trigram 相似度进行查询，利用 GIN 索引
+            # 相似度阈值可根据需要调整
+            qs = qs.annotate(
+                similarity=TrigramSimilarity('content', query) + TrigramSimilarity('original_filename', query)
+            ).filter(similarity__gt=0.1).order_by('-similarity')
+
         # 限制返回规模，前端再分页
         qs = qs.order_by("-id")[:300]
         ser = CorpusDataSerializer(qs, many=True).data

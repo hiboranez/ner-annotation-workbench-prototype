@@ -1,3 +1,4 @@
+# backend/config/settings.py
 # python
 import os
 from pathlib import Path
@@ -15,6 +16,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "django.contrib.postgres",  # <-- 添加 PostgreSQL 支持
     "rest_framework",
     "channels",
     "django_filters",
@@ -95,10 +97,15 @@ APP_CACHE_TTLS = {
     "SEARCH_TTL": int(os.getenv("SEARCH_TTL", "300")),
 }
 
+# 切换到 PostgreSQL
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': os.getenv('POSTGRES_DB', 'ner_db'),
+        'USER': os.getenv('POSTGRES_USER', 'ner'),
+        'PASSWORD': os.getenv('POSTGRES_PASSWORD', 'hiboranez'),
+        'HOST': os.getenv('POSTGRES_HOST', 'localhost'),
+        'PORT': os.getenv('POSTGRES_PORT', '5432'),
     }
 }
 
