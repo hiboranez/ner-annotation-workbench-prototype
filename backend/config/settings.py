@@ -1,6 +1,5 @@
-# backend/config/settings.py
-# python
 import os
+from datetime import timedelta
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -16,7 +15,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    "django.contrib.postgres",  # <-- 添加 PostgreSQL 支持
+    "django.contrib.postgres",
     "rest_framework",
     "channels",
     "django_filters",
@@ -59,13 +58,13 @@ WSGI_APPLICATION = 'config.wsgi.application'
 REDIS_HOST = os.getenv("REDIS_HOST", "127.0.0.1")
 REDIS_PORT = int(os.getenv("REDIS_PORT", "6379"))
 
-# Redis DB 划分：channels=0, celery(broker)=1, celery(result)=2, cache=3(可配)
+# Redis DB: channels=0, celery(broker)=1, celery(result)=2, cache=3
 REDIS_CACHE_DB = int(os.getenv("REDIS_CACHE_DB", "3"))
 
 CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels_redis.core.RedisChannelLayer",
-        "CONFIG": {"hosts": [(REDIS_HOST, REDIS_PORT, 0)]},  # 显式指定 DB=0
+        "CONFIG": {"hosts": [(REDIS_HOST, REDIS_PORT, 0)]},
     }
 }
 
@@ -74,30 +73,21 @@ CELERY_RESULT_BACKEND = f"redis://{REDIS_HOST}:{REDIS_PORT}/2"
 CELERY_TASK_TIME_LIMIT = 300
 CELERY_TASK_SOFT_TIME_LIMIT = 280
 
-# Django 缓存：Redis（内置 RedisCache 后端）
 CACHES = {
     "default": {
         "BACKEND": "django.core.cache.backends.redis.RedisCache",
         "LOCATION": f"redis://{REDIS_HOST}:{REDIS_PORT}/{REDIS_CACHE_DB}",
         "TIMEOUT": None,
         "KEY_PREFIX": os.getenv("CACHE_KEY_PREFIX", "app"),
-        # 不要添加 OPTIONS.client_class / CLIENT_CLASS 等第三方参数
-        # 可选的 redis‑py 参数（如需）示例：
-        # "OPTIONS": {
-        #     "socket_connect_timeout": 2,
-        #     "socket_timeout": 2,
-        # }
     }
 }
 
-# 业务缓存 TTL 配置（秒）
 APP_CACHE_TTLS = {
     "STATS_GLOBAL_TTL": int(os.getenv("STATS_GLOBAL_TTL", "60")),
     "RECENT_CORPUS_TTL": int(os.getenv("RECENT_CORPUS_TTL", "60")),
     "SEARCH_TTL": int(os.getenv("SEARCH_TTL", "300")),
 }
 
-# 切换到 PostgreSQL
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
@@ -148,11 +138,25 @@ REST_FRAMEWORK = {
         "rest_framework.filters.SearchFilter",
         "rest_framework.filters.OrderingFilter"
     ],
-    "EXCEPTION_HANDLER": "apps.data_import.exceptions.drf_exception_handler"
+    "EXCEPTION_HANDLER": "apps.data_import.exceptions.drf_exception_handler",
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
+        "rest_framework.authentication.SessionAuthentication",
+    ],
 }
 
-# === WebSocket / WS 协议与鉴权可调参数 ===
+# WebSocket / WS
 WS_SHARED_TOKEN = os.getenv("WS_SHARED_TOKEN", "")
 WS_TOKEN_MAX_AGE = int(os.getenv("WS_TOKEN_MAX_AGE", "86400"))
 WS_MAX_SEND_PER_SEC = int(os.getenv("WS_MAX_SEND_PER_SEC", "25"))
 WS_NAMESPACE = os.getenv("WS_NAMESPACE", "public")
+
+# SimpleJWT 配置
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=int(os.getenv("JWT_ACCESS_MINUTES", "60"))),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=int(os.getenv("JWT_REFRESH_DAYS", "7"))),
+    "ALGORITHM": "HS256",
+    "SIGNING_KEY": SECRET_KEY,
+    "AUTH_HEADER_TYPES": ("Bearer",),
+    "AUTH_TOKEN_CLASSES": ("rest_framework_simplejwt.tokens.AccessToken",),
+}

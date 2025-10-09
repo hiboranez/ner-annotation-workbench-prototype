@@ -1,201 +1,165 @@
+// javascript
 import {defineStore} from 'pinia';
-import {initWS, onWSEvent} from '@/ws';
+import {apiFetch} from '@/utils/http';
+import {initWS, onWSEvent} from '@/utils/realtime';
+import {useAuthStore} from '@/stores/authStore';
 
-const API_BASE = '/api/data-import';
-const CACHE_VERSION = 1;
-const CACHE_KEY = `CORPUS_CACHE_V${CACHE_VERSION}`;
-const MAX_CACHE_CORPUS = 200;
-let persistTimer = null;
-
-function loadSnapshot() {
-    try {
-        const raw = localStorage.getItem(CACHE_KEY);
-        if (!raw) return null;
-        const parsed = JSON.parse(raw);
-        if (parsed.version !== CACHE_VERSION) return null;
-        return parsed;
-    } catch {
-        return null;
-    }
-}
-
-function saveSnapshot(payload) {
-    try {
-        localStorage.setItem(CACHE_KEY, JSON.stringify(payload));
-    } catch {
-    }
-}
+const MAX_CACHE_CORPUS = 1000;
+const LS_KEY = 'corpus_store_v1';
 
 export const useCorpusStore = defineStore('corpus', {
     state: () => ({
-        // 语料与分页
         corpus: [],
+        counts: {pdf: 0, docx: 0, txt: 0, json: 0},
+        total: 0,
+
         searchQuery: '',
         filterFileType: '',
         corpusPage: 1,
-        corpusPageSize: 8,
-        // 统计
-        counts: {pdf: 0, docx: 0, txt: 0, json: 0},
-        // 上传任务
-        uploads: [], // {id,name,progress,status,ext,xhr}
-        // WS 连接状态
+        corpusPageSize: 10,
+
+        uploads: [],
+
+        _wsInited: false,
         wsConnectedAtLeastOnce: false,
-        // 初始化/缓存
         firstLoaded: false,
-        snapshotApplied: false,
-        lastRefreshTs: 0,
-        // 版本
-        cacheVersion: CACHE_VERSION
     }),
     getters: {
-        totalUploaded(state) {
-            return Object.values(state.counts).reduce((a, b) => a + b, 0);
+        totalUploaded: (s) => Object.values(s.counts || {}).reduce((a, b) => a + (b || 0), 0),
+        corpusTotalPages: (s) => Math.max(1, Math.ceil(s.corpus.length / s.corpusPageSize)),
+        paginatedCorpus: (s) => {
+            const start = (s.corpusPage - 1) * s.corpusPageSize;
+            return s.corpus.slice(start, start + s.corpusPageSize);
         },
-        corpusTotalPages(state) {
-            return Math.max(1, Math.ceil(state.corpus.length / state.corpusPageSize));
-        },
-        paginatedCorpus(state) {
-            const start = (state.corpusPage - 1) * state.corpusPageSize;
-            return state.corpus.slice(start, start + state.corpusPageSize);
-        }
     },
     actions: {
         applySnapshot() {
-            if (this.snapshotApplied) return;
-            const snap = loadSnapshot();
-            if (snap) {
-                this.corpus = snap.corpus || [];
-                this.counts = snap.counts || this.counts;
-                this.firstLoaded = true;
+            try {
+                const raw = localStorage.getItem(LS_KEY);
+                if (!raw) return;
+                const v = JSON.parse(raw);
+                this.corpus = v.corpus || [];
+                this.counts = v.counts || {pdf: 0, docx: 0, txt: 0, json: 0};
+                this.total = v.total || 0;
+                this.searchQuery = v.searchQuery || '';
+                this.filterFileType = v.filterFileType || '';
+                this.corpusPage = v.corpusPage || 1;
+            } catch {
             }
-            this.snapshotApplied = true;
         },
         schedulePersist() {
-            clearTimeout(persistTimer);
-            persistTimer = setTimeout(() => {
-                const slim = this.corpus.slice(0, MAX_CACHE_CORPUS);
-                saveSnapshot({
-                    version: CACHE_VERSION,
-                    corpus: slim,
+            try {
+                localStorage.setItem(LS_KEY, JSON.stringify({
+                    corpus: this.corpus,
                     counts: this.counts,
-                });
-            }, 400);
-        },
-        mergeCorpus(list) {
-            if (!Array.isArray(list)) return;
-            const incoming = [...list].sort((a, b) => b.id - a.id);
-            const oldMap = new Map(this.corpus.map(i => [i.id, i]));
-            const next = [];
-            for (const row of incoming) {
-                const existed = oldMap.get(row.id);
-                if (existed) {
-                    existed.fileType = row.fileType;
-                    existed.content = row.content;
-                    existed.status = row.status;
-                    existed.original_filename = row.original_filename;
-                    existed.created_at = row.created_at;
-                    next.push(existed);
-                } else {
-                    next.push({...row});
-                }
+                    total: this.total,
+                    searchQuery: this.searchQuery,
+                    filterFileType: this.filterFileType,
+                    corpusPage: this.corpusPage,
+                }));
+            } catch {
             }
-            this.corpus = next;
+        },
+        updateStats(counts) {
+            this.counts = {...{pdf: 0, docx: 0, txt: 0, json: 0}, ...counts};
+            this.total = Object.values(this.counts).reduce((a, b) => a + (b || 0), 0);
+            this.schedulePersist();
+        },
+        async refreshCounts() {
+            const r = await apiFetch('/api/data-import/stats/');
+            if (!r.ok) return;
+            const json = await r.json();
+            const counts = json.counts || json.data?.counts || {};
+            this.updateStats(counts);
+        },
+        async refreshCorpus({query} = {}) {
+            if (typeof query === 'string') this.searchQuery = query;
+            const params = new URLSearchParams();
+            if (this.searchQuery) params.set('query', this.searchQuery);
+            if (this.filterFileType) params.set('file_type', this.filterFileType);
+            const r = await apiFetch(`/api/data-import/corpus-data/${params.toString() ? '?' + params.toString() : ''}`);
+            if (!r.ok) return;
+            const data = await r.json();
+            this.corpus = Array.isArray(data) ? data : (data.data || []);
+            if (this.corpus.length > MAX_CACHE_CORPUS) this.corpus.length = MAX_CACHE_CORPUS;
             this.firstLoaded = true;
             this.schedulePersist();
         },
-        updateStats(counts) {
-            this.counts = {...this.counts, ...counts};
-            this.schedulePersist();
-        },
-        async refreshStats() {
-            try {
-                const r = await fetch(`${API_BASE}/stats/`);
-                const d = await r.json();
-                this.updateStats(d.counts || {});
-            } catch {
-            }
-        },
-        async refreshCorpus(params = {}) {
-            const p = new URLSearchParams();
-            if (params.query ?? this.searchQuery) p.append('query', params.query ?? this.searchQuery);
-            if (params.file_type ?? this.filterFileType) p.append('file_type', params.file_type ?? this.filterFileType);
-            try {
-                const r = await fetch(`${API_BASE}/corpus-data/?${p.toString()}`);
-                const list = await r.json();
-                this.mergeCorpus(list);
-                this.lastRefreshTs = Date.now();
-            } catch {
-            }
-        },
         async refetchAll() {
-            await Promise.all([this.refreshStats(), this.refreshCorpus({})]);
+            await Promise.all([this.refreshCounts(), this.refreshCorpus({})]);
         },
-        // 上传逻辑（整合）
+
         startUpload(file, allowedTypes = ['pdf', 'docx', 'txt', 'json']) {
-            const ext = file.name.split('.').pop().toLowerCase();
+            const auth = useAuthStore();
+            auth.load();
+
+            const ext = file.name.includes('.') ? file.name.split('.').pop().toLowerCase() : '';
             if (!allowedTypes.includes(ext)) {
-                return {error: '不支持的文件类型: ' + ext};
+                alert(`不支持的类型: ${ext}`);
+                return null;
             }
-            const item = {
-                id: 'local_' + Date.now() + '_' + Math.random().toString(16).slice(2),
-                name: file.name,
-                progress: 0,
-                status: 'uploading',
-                ext,
-                xhr: null
-            };
+            const id = Date.now() + Math.random();
+            const item = {id, name: file.name, size: file.size, progress: 0, status: 'uploading', xhr: null};
             this.uploads.unshift(item);
+            if (this.uploads.length > 200) this.uploads.length = 200;
 
             const form = new FormData();
             form.append('file', file);
 
             const xhr = new XMLHttpRequest();
             item.xhr = xhr;
-            xhr.open('POST', `${API_BASE}/upload/`);
+            xhr.open('POST', '/api/data-import/upload/', true);
+            if (auth.accessToken) {
+                xhr.setRequestHeader('Authorization', `Bearer ${auth.accessToken}`);
+            }
 
-            xhr.upload.onprogress = ev => {
-                if (ev.lengthComputable) {
-                    item.progress = +(ev.loaded / ev.total * 100).toFixed(2);
-                }
-            };
             const finalize = () => {
-                // 成功上传数变化 -> 触发增量刷新
-                const successCount = this.uploads.filter(u => u.status === 'success').length;
-                if (successCount > 0) {
-                    // 触发异步更新（避免频繁）
-                    setTimeout(() => {
-                        this.refreshStats();
-                        this.refreshCorpus({});
-                    }, 300);
+                item.progress = 100;
+                setTimeout(() => {
+                    item.xhr = null;
+                }, 300);
+            };
+
+            xhr.upload.onprogress = (e) => {
+                if (e.lengthComputable) {
+                    item.progress = Math.min(99, (e.loaded / e.total) * 100);
                 }
             };
-            xhr.onload = () => {
-                if (xhr.status >= 200 && xhr.status < 300) {
-                    item.progress = 100;
-                    item.status = 'success';
-                } else {
-                    item.status = 'failed';
-                }
-                finalize();
-            };
-            xhr.onerror = () => {
-                item.status = 'failed';
-                finalize();
-            };
-            xhr.onloadend = () => {
-                if (item.status === 'uploading') {
-                    if (xhr.status >= 200 && xhr.status < 300) {
-                        item.progress = 100;
-                        item.status = 'success';
-                    } else {
+
+            xhr.onreadystatechange = () => {
+                if (xhr.readyState === 4) {
+                    try {
+                        const ok = xhr.status >= 200 && xhr.status < 300;
+                        if (ok) {
+                            const resp = JSON.parse(xhr.responseText || '{}');
+                            if ((resp.code ?? 0) === 0) {
+                                item.status = 'success';
+                                this.refreshCounts().catch(() => {
+                                });
+                            } else {
+                                item.status = 'failed';
+                            }
+                        } else if (xhr.status === 401) {
+                            item.status = 'failed';
+                            alert('未登录或无权限上传');
+                        } else {
+                            item.status = 'failed';
+                        }
+                    } catch {
                         item.status = 'failed';
                     }
                     finalize();
                 }
             };
+
+            xhr.onerror = () => {
+                item.status = 'failed';
+                finalize();
+            };
             xhr.send(form);
             return item;
         },
+
         abortUpload(id) {
             const it = this.uploads.find(u => u.id === id);
             if (it && it.xhr && it.status === 'uploading') {
@@ -206,7 +170,7 @@ export const useCorpusStore = defineStore('corpus', {
                 it.status = 'failed';
             }
         },
-        // WebSocket 初始化与消息处理
+
         initRealtime() {
             if (this._wsInited) return;
             this._wsInited = true;
@@ -214,7 +178,6 @@ export const useCorpusStore = defineStore('corpus', {
             onWSEvent(msg => {
                 if (msg.event === 'ws.reconnected') {
                     this.wsConnectedAtLeastOnce = true;
-                    // 断线重连后做一次补拉
                     this.refetchAll();
                     return;
                 }
@@ -228,10 +191,7 @@ export const useCorpusStore = defineStore('corpus', {
                                 content: msg.data.content || '(解析中...)',
                                 status: msg.data.status
                             });
-                            // 控制缓存长度
-                            if (this.corpus.length > MAX_CACHE_CORPUS) {
-                                this.corpus.length = MAX_CACHE_CORPUS;
-                            }
+                            if (this.corpus.length > MAX_CACHE_CORPUS) this.corpus.length = MAX_CACHE_CORPUS;
                             this.schedulePersist();
                         }
                         break;
@@ -249,9 +209,7 @@ export const useCorpusStore = defineStore('corpus', {
                                 content: msg.data.content || '(解析中...)',
                                 status: msg.data.status
                             });
-                            if (this.corpus.length > MAX_CACHE_CORPUS) {
-                                this.corpus.length = MAX_CACHE_CORPUS;
-                            }
+                            if (this.corpus.length > MAX_CACHE_CORPUS) this.corpus.length = MAX_CACHE_CORPUS;
                             this.schedulePersist();
                         }
                         break;
@@ -265,10 +223,10 @@ export const useCorpusStore = defineStore('corpus', {
                         break;
                     }
                     case 'stats.update':
-                        this.updateStats(msg.stats.counts || {});
+                        this.updateStats(msg.stats?.counts || {});
                         break;
                 }
             });
-        }
+        },
     }
 });

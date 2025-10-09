@@ -1,3 +1,4 @@
+<!-- vue -->
 <template>
   <div class="data-import-container">
     <div class="content-area">
@@ -29,7 +30,6 @@
 
         <div class="card corpus-data">
           <div class="corpus-header">
-            <!-- 修正: corpus.length -> store.corpus.length -->
             <h3>语料数据（共{{ store.corpus.length }}条）</h3>
             <button class="export-btn" @click="exportData">导出数据</button>
           </div>
@@ -84,12 +84,9 @@
             </button>
             <span class="pager-info">
               第
-              <span
-                  v-if="!editingCorpusPage"
-                  class="pager-current"
-                  @click="startEditCorpusPage"
-                  title="点击输入页码跳转"
-              >{{ store.corpusPage }}</span>
+              <span v-if="!editingCorpusPage" class="pager-current" @click="startEditCorpusPage"
+                    title="点击输入页码跳转">
+                {{ store.corpusPage }}</span>
               <input
                   v-else
                   ref="corpusPageInput"
@@ -125,14 +122,11 @@
             <div class="status-item" v-for="u in displayedUploads" :key="u.id">
               <div class="status-row">
                 <span class="file-name" :title="u.name">{{ u.name }}</span>
-                <span
-                    class="parse-status-text"
-                    :class="{
+                <span class="parse-status-text" :class="{
                       'is-uploading': u.status==='uploading',
                       'is-success': u.status==='success',
                       'is-failed': u.status==='failed'
-                    }"
-                >{{ statusText(u.status) }}</span>
+                    }">{{ statusText(u.status) }}</span>
               </div>
               <div class="bar-wrap">
                 <div class="bar-track">
@@ -147,12 +141,9 @@
             <button class="pager-btn" :disabled="uploadPage===1" @click="uploadPage--">上一页</button>
             <span class="pager-info">
               第
-              <span
-                  v-if="!editingUploadPage"
-                  class="pager-current"
-                  @click="startEditUploadPage"
-                  title="点击输入页码跳转"
-              >{{ uploadPage }}</span>
+              <span v-if="!editingUploadPage" class="pager-current" @click="startEditUploadPage"
+                    title="点击输入页码跳转">
+                {{ uploadPage }}</span>
               <input
                   v-else
                   ref="uploadPageInput"
@@ -178,24 +169,12 @@
             <h3>文件分布</h3>
             <span class="file-count-badge">共 {{ totalUploaded }} 个</span>
           </div>
-          <div
-              v-if="totalUploaded > 0"
-              class="distribution-bar"
-              @mousemove="handleDistMouseMove"
-              @mouseleave="hideDistTooltip"
-          >
-            <div
-                v-for="type in fileTypes"
-                :key="'seg-' + type"
-                class="dist-segment"
-                :style="segmentStyle(type)"
-                @mouseenter="showDistTooltip(type)"
-            ></div>
-            <div
-                v-if="distTooltip.visible"
-                class="dist-tooltip"
-                :style="{ left: distTooltip.x + 'px', top: distTooltip.y + 'px' }"
-            >
+          <div v-if="totalUploaded > 0" class="distribution-bar" @mousemove="handleDistMouseMove"
+               @mouseleave="hideDistTooltip">
+            <div v-for="type in fileTypes" :key="'seg-' + type" class="dist-segment" :style="segmentStyle(type)"
+                 @mouseenter="showDistTooltip(type)"></div>
+            <div v-if="distTooltip.visible" class="dist-tooltip"
+                 :style="{ left: distTooltip.x + 'px', top: distTooltip.y + 'px' }">
               <div class="tt-type">{{ distTooltip.type.toUpperCase() }}</div>
               <div class="tt-percent">{{ percentFor(distTooltip.type) }}%</div>
             </div>
@@ -233,6 +212,7 @@
 <script setup>
 import {computed, onMounted, ref} from 'vue';
 import {useCorpusStore} from '@/stores/corpusStore';
+import {apiFetch} from '@/utils/http';
 
 const store = useCorpusStore();
 
@@ -273,7 +253,17 @@ function chooseFilterType(t) {
 async function deleteCorpus(item) {
   if (!confirm(`确认删除 #${item.id}?`)) return;
   try {
-    await fetch(`/api/data-import/corpus-data/${item.id}/`, {method: 'DELETE'});
+    const r = await apiFetch(`/api/data-import/corpus-data/${item.id}/`, {method: 'DELETE'});
+    if (r.ok) {
+      store.refreshCorpus({});
+      store.refreshCounts();
+    } else if (r.status === 403) {
+      alert('无权限删除（仅管理员）');
+    } else if (r.status === 401) {
+      alert('请先登录');
+    } else {
+      alert('删除失败');
+    }
   } catch {
   }
 }
@@ -353,10 +343,7 @@ const totalUploaded = computed(() => store.totalUploaded);
 function segmentStyle(type) {
   const total = totalUploaded.value || 1;
   const count = store.counts[type] || 0;
-  return {
-    width: (count / total) * 100 + '%',
-    background: fileTypeColors[type]
-  };
+  return {width: (count / total) * 100 + '%', background: fileTypeColors[type]};
 }
 
 function percentFor(type) {
@@ -371,8 +358,7 @@ function showDistTooltip(type) {
 
 function handleDistMouseMove(e) {
   if (!distTooltip.value.visible) return;
-  // 使用容器而不是当前 segment 的局部 offset，避免跨 segment 时坐标重置
-  const container = e.currentTarget; // 即 .distribution-bar
+  const container = e.currentTarget;
   const rect = container.getBoundingClientRect();
   distTooltip.value.x = e.clientX - rect.left;
   distTooltip.value.y = e.clientY - rect.top;
@@ -403,9 +389,8 @@ onMounted(async () => {
 });
 </script>
 
-
 <style scoped>
-/* 原样保留（样式未改动） */
+/* 样式与原版一致，略 */
 .edit-btn,
 .delete-btn,
 .file-type-card,
@@ -484,15 +469,15 @@ onMounted(async () => {
 }
 
 .card {
-  background-color: #ffffff;
+  background: #fff;
   padding: 20px;
   border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, .1);
   transition: all .3s ease;
 }
 
 .card:hover {
-  box-shadow: 0 6px 15px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 6px 15px rgba(0, 0, 0, .15);
 }
 
 .upload-section {
@@ -507,7 +492,7 @@ onMounted(async () => {
 }
 
 .upload-btn {
-  background-color: #1d4e89;
+  background: #1d4e89;
   color: #fff;
   padding: 10px 20px;
   margin-top: 15px;
@@ -543,7 +528,7 @@ onMounted(async () => {
 }
 
 .export-btn {
-  background-color: #2d6a4f;
+  background: #2d6a4f;
   color: #fff;
   padding: 10px 15px;
   border: none;
@@ -562,9 +547,7 @@ onMounted(async () => {
   margin: 10px 0;
 }
 
-.search-btn,
-.filter-btn,
-.export-btn {
+.search-btn, .filter-btn, .export-btn {
   background: #2d6a4f;
   color: #fff;
   padding: 10px 15px;
@@ -587,7 +570,7 @@ onMounted(async () => {
   background: #fff;
   border: 1px solid #e5e7eb;
   border-radius: 6px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, .08);
   padding: 6px 0;
   z-index: 20;
   width: 120px;
@@ -608,11 +591,10 @@ onMounted(async () => {
 }
 
 .filter-btn.active {
-  background-color: #1b5e20;
+  background: #1b5e20;
 }
 
-.corpus-list-header,
-.corpus-list-item {
+.corpus-list-header, .corpus-list-item {
   display: grid;
   grid-template-columns:60px 90px minmax(0, 1fr) 80px 140px;
   column-gap: 12px;
@@ -645,8 +627,7 @@ onMounted(async () => {
   border-radius: 8px;
 }
 
-.edit-btn,
-.delete-btn {
+.edit-btn, .delete-btn {
   background: #d9d9d9;
   padding: 5px 10px;
   margin: 0 5px;
@@ -756,7 +737,7 @@ onMounted(async () => {
   border-radius: 10px;
   overflow: hidden;
   cursor: default;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.2);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .2);
   transition: transform .15s;
 }
 
@@ -780,7 +761,7 @@ onMounted(async () => {
   justify-content: center;
   font-weight: 600;
   color: #111;
-  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.4);
+  text-shadow: 0 1px 2px rgba(255, 255, 255, .4);
 }
 
 .tile-type {
