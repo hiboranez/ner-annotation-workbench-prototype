@@ -1,10 +1,19 @@
-# python
-# 文件: `backend/apps/data_import/routing.py`
+from channels.generic.websocket import AsyncJsonWebsocketConsumer
 from django.urls import path
 
-from . import consumers
+
+class NoopConsumer(AsyncJsonWebsocketConsumer):
+    async def connect(self):
+        await self.accept()
+
+    async def receive_json(self, content, **kwargs):
+        pass
+
+    async def disconnect(self, code):
+        pass
+
 
 websocket_urlpatterns = [
-    path("ws/corpus/", consumers.CorpusConsumer.as_asgi()),
-    path("ws/stats/", consumers.StatsConsumer.as_asgi()),
+    path("ws/corpus/", NoopConsumer.as_asgi()),
+    path("ws/stats/", NoopConsumer.as_asgi()),
 ]

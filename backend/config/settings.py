@@ -1,6 +1,12 @@
+import logging
 import os
 from datetime import timedelta
 from pathlib import Path
+
+import sentry_sdk
+from sentry_sdk.integrations.celery import CeleryIntegration
+from sentry_sdk.integrations.django import DjangoIntegration
+from sentry_sdk.integrations.logging import LoggingIntegration
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -9,6 +15,8 @@ DEBUG = os.getenv("DJANGO_DEBUG", "1") == "1"
 ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "*").split(",")
 
 INSTALLED_APPS = [
+    # Prometheus 需放在首部，确保中间件统计完整
+    "django_prometheus",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -26,7 +34,13 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    # Prometheus Before
+    "django_prometheus.middleware.PrometheusBeforeMiddleware",
+
     'django.middleware.security.SecurityMiddleware',
+    # 请求 ID + 日志上下文
+    'apps.data_import.middleware.RequestIdMiddleware',
+
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'apps.data_import.exceptions.ApiExceptionMiddleware',
@@ -34,6 +48,9 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+
+    # Prometheus After
+    "django_prometheus.middleware.PrometheusAfterMiddleware",
 ]
 
 ROOT_URLCONF = 'config.urls'
@@ -73,6 +90,9 @@ CELERY_RESULT_BACKEND = f"redis://{REDIS_HOST}:{REDIS_PORT}/2"
 CELERY_TASK_TIME_LIMIT = 300
 CELERY_TASK_SOFT_TIME_LIMIT = 280
 
+# 使 Celery 复用 Django 的日志配置
+CELERY_WORKER_HIJACK_ROOT_LOGGER = False
+
 CACHES = {
     "default": {
         "BACKEND": "django.core.cache.backends.redis.RedisCache",
@@ -90,7 +110,8 @@ APP_CACHE_TTLS = {
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql',
+        # 使用 django-prometheus 包装的后端，暴露 DB 指标
+        'ENGINE': 'django_prometheus.db.backends.postgresql',
         'NAME': os.getenv('POSTGRES_DB', 'ner_db'),
         'USER': os.getenv('POSTGRES_USER', 'ner'),
         'PASSWORD': os.getenv('POSTGRES_PASSWORD', 'hiboranez'),
@@ -160,3 +181,58 @@ SIMPLE_JWT = {
     "AUTH_HEADER_TYPES": ("Bearer",),
     "AUTH_TOKEN_CLASSES": ("rest_framework_simplejwt.tokens.AccessToken",),
 }
+
+# ---------- 结构化 JSON 日志 ----------
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "filters": {
+        "request_context": {
+            "()": "apps.data_import.middleware.RequestContextFilter",
+        }
+    },
+    "formatters": {
+        "json": {
+            "()": "pythonjsonlogger.jsonlogger.JsonFormatter",
+            "fmt": "%(asctime)s %(levelname)s %(name)s %(message)s %(request_id)s %(path)s %(method)s %(status_code)s %(user_id)s",
+        }
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "level": LOG_LEVEL,
+            "formatter": "json",
+            "filters": ["request_context"],
+        }
+    },
+    "root": {
+        "level": LOG_LEVEL,
+        "handlers": ["console"],
+    },
+    "loggers": {
+        "django.server": {"handlers": ["console"], "level": LOG_LEVEL, "propagate": False},
+        "django": {"handlers": ["console"], "level": LOG_LEVEL, "propagate": False},
+        "channels": {"handlers": ["console"], "level": LOG_LEVEL, "propagate": False},
+        "celery": {"handlers": ["console"], "level": LOG_LEVEL, "propagate": False},
+    }
+}
+
+# ---------- Sentry ----------
+SENTRY_DSN = os.getenv("SENTRY_DSN", "")
+if SENTRY_DSN:
+    sentry_sdk.init(
+        dsn=SENTRY_DSN,
+        integrations=[
+            DjangoIntegration(),
+            CeleryIntegration(),
+            LoggingIntegration(
+                level=logging.INFO,  # 记录 INFO 以上到 breadcrumbs
+                event_level=logging.ERROR  # ERROR 以上作为事件上报
+            )
+        ],
+        traces_sample_rate=float(os.getenv("SENTRY_TRACES_SAMPLE_RATE", "0.0")),
+        profiles_sample_rate=float(os.getenv("SENTRY_PROFILES_SAMPLE_RATE", "0.0")),
+        send_default_pii=True,
+        environment=os.getenv("SENTRY_ENV", "dev"),
+    )

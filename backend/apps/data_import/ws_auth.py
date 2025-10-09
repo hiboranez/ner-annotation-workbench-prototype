@@ -4,7 +4,6 @@ from urllib.parse import parse_qs
 
 from channels.auth import AuthMiddlewareStack
 from django.conf import settings
-from django.contrib.auth.models import AnonymousUser
 from django.core.signing import TimestampSigner, BadSignature, SignatureExpired
 
 # SimpleJWT
@@ -96,6 +95,7 @@ class TokenAuthMiddleware:
         self.inner = inner
 
     async def __call__(self, scope, receive, send):
+        from django.contrib.auth.models import AnonymousUser  # 移到这里
         base_user = scope.get("user", AnonymousUser())
         token = _extract_token(scope)
 

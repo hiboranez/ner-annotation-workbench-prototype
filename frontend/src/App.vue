@@ -44,7 +44,7 @@ function logout() {
   justify-content: space-between;
   height: 30px;
   padding: 10px 16px;
-  background: #1582ec;
+  background: #1489fb;
   color: #fff;
 }
 

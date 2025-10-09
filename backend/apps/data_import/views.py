@@ -1,4 +1,5 @@
 import os
+import time
 import uuid
 
 from django.conf import settings
@@ -21,6 +22,18 @@ from .serializers import CorpusDataSerializer
 from .statistics import ALLOWED_TYPES
 from .statistics import build_stats
 
+# Prometheus 自定义指标：上传耗时
+try:
+    from prometheus_client import Histogram
+
+    METRIC_UPLOAD_SECONDS = Histogram(
+        'app_upload_seconds',
+        'Upload duration in seconds',
+        ['file_type', 'status']
+    )
+except Exception:  # noqa
+    METRIC_UPLOAD_SECONDS = None
+
 # 上传目录
 UPLOAD_DIR = os.path.join(getattr(settings, "BASE_DIR", os.getcwd()), "uploads", "corpus")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
@@ -33,30 +46,43 @@ def upload_view(request):
     """
     接收单文件上传，落盘后创建记录并异步解析。
     仅 annotator/admin 允许。
+    KPI: 记录上传耗时（写盘+调度前的总时长）。
     """
-    f = request.FILES.get("file")
-    if not f:
-        return fail("缺少文件字段 `file`", code=4001, status=400)
+    started = time.perf_counter()
+    ext = ""
+    status_label = "error"
+    try:
+        f = request.FILES.get("file")
+        if not f:
+            return fail("缺少文件字段 `file`", code=4001, status=400)
 
-    original = getattr(f, "name", "") or "unnamed"
-    ext = original.rsplit(".", 1)[-1].lower() if "." in original else ""
-    if ext not in ALLOWED_TYPES:
-        return fail(f"不支持的文件类型: {ext}", code=4002, status=400)
+        original = getattr(f, "name", "") or "unnamed"
+        ext = original.rsplit(".", 1)[-1].lower() if "." in original else ""
+        if ext not in ALLOWED_TYPES:
+            return fail(f"不支持的文件类型: {ext}", code=4002, status=400)
 
-    obj = CorpusData.objects.create(
-        fileType=ext, original_filename=original, status="解析中", content=""
-    )
+        obj = CorpusData.objects.create(
+            fileType=ext, original_filename=original, status="解析中", content=""
+        )
 
-    fname = f"{uuid.uuid4().hex}.{ext}"
-    fpath = os.path.join(UPLOAD_DIR, fname)
-    with open(fpath, "wb") as dst:
-        for chunk in f.chunks():
-            dst.write(chunk)
+        fname = f"{uuid.uuid4().hex}.{ext}"
+        fpath = os.path.join(UPLOAD_DIR, fname)
+        with open(fpath, "wb") as dst:
+            for chunk in f.chunks():
+                dst.write(chunk)
 
-    from .tasks import parse_corpus_task
-    parse_corpus_task.delay(obj.id, ext, fpath)
+        from .tasks import parse_corpus_task
+        parse_corpus_task.delay(obj.id, ext, fpath)
 
-    return ok({"id": obj.id, "fileType": ext, "status": obj.status})
+        status_label = "ok"
+        return ok({"id": obj.id, "fileType": ext, "status": obj.status})
+    finally:
+        try:
+            if METRIC_UPLOAD_SECONDS:
+                duration = max(0.0, time.perf_counter() - started)
+                METRIC_UPLOAD_SECONDS.labels(file_type=ext or "unknown", status=status_label).observe(duration)
+        except Exception:
+            pass
 
 
 @api_view(["GET"])

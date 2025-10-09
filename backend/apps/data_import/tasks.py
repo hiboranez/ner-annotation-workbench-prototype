@@ -19,21 +19,28 @@ from .statistics import build_stats
 
 logger = logging.getLogger(__name__)
 
-# 可选：Prometheus 指标（未安装时自动降级）
+# Prometheus 指标（任务级）
 try:
     from prometheus_client import Counter
 
     METRIC_TASK_SUCCESS = Counter('app_task_success_total', 'Task success total', ['task'])
     METRIC_TASK_FAILURE = Counter('app_task_failure_total', 'Task failure total', ['task'])
     METRIC_TASK_RETRY = Counter('app_task_retry_total', 'Task retry total', ['task'])
+    # KPI: 解析尝试/失败计数
+    METRIC_PARSE_TOTAL = Counter('app_parse_total', 'Total parse attempts', ['ext'])
+    METRIC_PARSE_FAILED = Counter('app_parse_failed_total', 'Total parse failures', ['ext'])
 except Exception:  # noqa
     METRIC_TASK_SUCCESS = METRIC_TASK_FAILURE = METRIC_TASK_RETRY = None
+    METRIC_PARSE_TOTAL = METRIC_PARSE_FAILED = None
 
 
-def _metric_inc(counter, task_name: str):
+def _metric_inc(counter, *labels):
     try:
         if counter:
-            counter.labels(task=task_name).inc()
+            if labels:
+                counter.labels(*labels).inc()
+            else:
+                counter.inc()
     except Exception:
         pass
 
@@ -48,9 +55,11 @@ def parse_corpus_task(self, corpus_id: int, ext: str, file_path: str):
     """
     解析上传文件，写入内容与状态。
     队列：parsing
+    KPI: 解析失败率（app_parse_failed_total / app_parse_total）
     """
     task_name = 'parse_corpus_task'
     try:
+        _metric_inc(METRIC_PARSE_TOTAL, ext or "unknown")
         try:
             obj = CorpusData.objects.get(id=corpus_id)
         except CorpusData.DoesNotExist:
@@ -64,9 +73,14 @@ def parse_corpus_task(self, corpus_id: int, ext: str, file_path: str):
         obj.content = content
         obj.status = "已解析" if not content.startswith("解析失败") else "解析失败"
         obj.save(update_fields=["content", "status"])
+
+        if obj.status != "已解析":
+            _metric_inc(METRIC_PARSE_FAILED, ext or "unknown")
+
         _metric_inc(METRIC_TASK_SUCCESS, task_name)
     except Exception as e:
         _metric_inc(METRIC_TASK_FAILURE, task_name)
+        _metric_inc(METRIC_PARSE_FAILED, ext or "unknown")
         _notify_warning(f'[parse] failed corpus_id={corpus_id}, err={e}')
         try:
             _metric_inc(METRIC_TASK_RETRY, task_name)
