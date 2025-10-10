@@ -27,6 +27,7 @@ INSTALLED_APPS = [
     "rest_framework",
     "channels",
     "django_filters",
+    "corsheaders",  # 添加 CORS 支持
     "apps.data_import",
     "apps.data_overview",
     "apps.data_annotation",
@@ -37,6 +38,7 @@ MIDDLEWARE = [
     # Prometheus Before
     "django_prometheus.middleware.PrometheusBeforeMiddleware",
 
+    'corsheaders.middleware.CorsMiddleware',  # 添加 CORS 中间件
     'django.middleware.security.SecurityMiddleware',
     # 请求 ID + 日志上下文
     'apps.data_import.middleware.RequestIdMiddleware',
@@ -151,6 +153,10 @@ _csrf_hosts = os.getenv("CSRF_TRUSTED_ORIGINS", "")
 if _csrf_hosts:
     CSRF_TRUSTED_ORIGINS = [h if h.startswith("http") else f"https://{h}" for h in _csrf_hosts.split(",")]
 
+# CORS 设置
+CORS_ALLOWED_ORIGINS = os.getenv("CORS_ALLOWED_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000").split(",")
+CORS_ALLOW_CREDENTIALS = True
+
 REST_FRAMEWORK = {
     "DEFAULT_PAGINATION_CLASS": "apps.data_import.pagination.StandardPagination",
     "PAGE_SIZE": 20,
@@ -164,6 +170,15 @@ REST_FRAMEWORK = {
         "rest_framework_simplejwt.authentication.JWTAuthentication",
         "rest_framework.authentication.SessionAuthentication",
     ],
+    # 添加 Throttling
+    "DEFAULT_THROTTLE_CLASSES": [
+        "rest_framework.throttling.AnonRateThrottle",
+        "rest_framework.throttling.UserRateThrottle",
+    ],
+    "DEFAULT_THROTTLE_RATES": {
+        "anon": "100/minute",  # 匿名用户每分钟 100 次
+        "user": "1000/minute",  # 登录用户每分钟 1000 次
+    },
 }
 
 # WebSocket / WS
