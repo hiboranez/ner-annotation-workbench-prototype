@@ -1,0 +1,18 @@
+# /etc/systemd/system/ner_celery.service
+[Unit]
+Description=NER Celery Worker
+After=network.target redis.service
+Wants=redis.service
+
+[Service]
+Type=simple
+WorkingDirectory=/path/to/NER-Web/backend
+Environment="DJANGO_DEBUG=0"
+ExecStart=/path/to/NER-Web/venv/bin/celery -A config worker -l info -c 2
+Restart=on-failure
+RestartSec=5
+User=www-data
+Group=www-data
+
+[Install]
+WantedBy=multi-user.target

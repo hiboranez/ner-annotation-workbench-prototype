@@ -1,0 +1,18 @@
+# /etc/systemd/system/ner_asgi.service
+[Unit]
+Description=NER ASGI (Daphne)
+After=network.target redis.service
+Wants=redis.service
+
+[Service]
+Type=simple
+WorkingDirectory=/path/to/NER-Web
+Environment="DJANGO_DEBUG=0" "ALLOWED_HOSTS=your.domain.com" "DJANGO_SECRET_KEY=prod_secret" "CSRF_TRUSTED_ORIGINS=your.domain.com"
+ExecStart=/path/to/NER-Web/venv/bin/bash scripts/asgi_prod.sh
+Restart=on-failure
+RestartSec=5
+User=www-data
+Group=www-data
+
+[Install]
+WantedBy=multi-user.target
