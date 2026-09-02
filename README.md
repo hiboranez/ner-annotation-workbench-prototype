@@ -1,6 +1,6 @@
 <div align="center">
 
-# NER Annotation Workbench Prototype
+# NER Studio
 
 ### A Web Prototype for Named Entity Recognition Annotation
 
@@ -21,7 +21,7 @@ A Vue 3 and Django project scaffold for exploring a web-based NER data annotatio
 
 ## Overview
 
-NER Annotation Workbench Prototype was created to explore the structure of a web-based data annotation workbench for named entity recognition. Its intended workflow covered raw-text import, entity annotation, dataset overview, and annotation export.
+NER Studio was created to explore the structure of a web-based data annotation workbench for named entity recognition. Its intended workflow covered raw-text import, entity annotation, dataset overview, and annotation export.
 
 The repository currently contains an initialized Vue front end, a Django back end, and placeholder business modules. It does not include a complete annotation interface, data models, or REST APIs. The code is preserved as a learning record and project-structure reference.
 
@@ -52,7 +52,7 @@ Text Import → Named Entity Annotation → Dataset Overview → Annotation Expo
 ## Repository Structure
 
 ```text
-ner-annotation-workbench-prototype/
+ner-studio/
 ├── backend/
 │   ├── config/                 # Django project configuration
 │   ├── data_import/            # Data import module (scaffold)

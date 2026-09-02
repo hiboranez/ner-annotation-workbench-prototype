@@ -1,8 +1,8 @@
 <div align="center">
 
-# NER Annotation Workbench Prototype
+# NER Studio
 
-### NER 标注工作台原型
+### 命名实体识别标注工作台
 
 一个基于 Vue 3 与 Django 搭建的命名实体识别（NER）数据标注 Web 项目骨架。
 
@@ -22,7 +22,7 @@
 
 ## 项目简介
 
-NER Annotation Workbench Prototype 最初用于探索一个面向命名实体识别任务的数据标注工作台。项目采用前后端分离结构，计划覆盖从原始文本导入、实体标注、数据概览到标注结果导出的基础流程。
+NER Studio 最初用于探索一个面向命名实体识别任务的数据标注工作台。项目采用前后端分离结构，计划覆盖从原始文本导入、实体标注、数据概览到标注结果导出的基础流程。
 
 当前仓库完成了 Vue 前端、Django 后端及业务模块的初始搭建，尚未实现完整的标注界面、数据模型和 REST API。仓库保留为学习记录和项目结构参考。
 
@@ -55,7 +55,7 @@ NER Annotation Workbench Prototype 最初用于探索一个面向命名实体识
 ## 项目结构
 
 ```text
-ner-annotation-workbench-prototype/
+ner-studio/
 ├── backend/
 │   ├── config/                 # Django 项目配置
 │   ├── data_import/            # 数据导入模块（骨架）

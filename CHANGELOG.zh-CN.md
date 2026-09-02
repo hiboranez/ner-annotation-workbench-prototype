@@ -1,8 +1,8 @@
-# NER Annotation Workbench Prototype v0.0.1 · 初始归档版本
+# NER Studio v0.0.1 · 初始归档版本
 
-`v0.0.1` 是 NER Annotation Workbench Prototype 的首个也是最终版本，用于保存这个 NER 数据标注 Web 练习项目结束时的代码与文档状态。
+`v0.0.1` 是 NER Studio 的首个也是最终版本，用于保存这个 NER 数据标注 Web 练习项目结束时的代码与文档状态。
 
-[English release notes](https://github.com/hiboranez/ner-annotation-workbench-prototype/releases/tag/v0.0.1)
+[English release notes](https://github.com/hiboranez/ner-studio/releases/tag/v0.0.1)
 
 ## 项目骨架
 
