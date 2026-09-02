@@ -16,7 +16,6 @@ A Vue 3 and Django project scaffold for exploring a web-based NER data annotatio
 **English** | [简体中文](README.zh-CN.md)
 
 </div>
-
 > [!IMPORTANT]
 > This is a practice project for learning front-end/back-end separation and NER workflow design. It remains at the scaffold stage, is no longer maintained, and is not suitable for production use.
 
@@ -156,4 +155,3 @@ This project is licensed under the [MIT License](LICENSE).
 Preserved as a learning record.
 
 </div>
-
