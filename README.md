@@ -2,97 +2,94 @@
 
 # NER Annotation Workbench Prototype
 
-### NER 标注工作台原型
+### A Web Prototype for Named Entity Recognition Annotation
 
-一个基于 Vue 3 与 Django 搭建的命名实体识别（NER）数据标注 Web 项目骨架。
+A Vue 3 and Django project scaffold for exploring a web-based NER data annotation workflow.
 
 [![Vue](https://img.shields.io/badge/Vue-3.5-42b883?logo=vuedotjs&logoColor=white)](https://vuejs.org/)
 [![Vite](https://img.shields.io/badge/Vite-7.0-646cff?logo=vite&logoColor=white)](https://vite.dev/)
 [![Django](https://img.shields.io/badge/Django-4.2-092e20?logo=django&logoColor=white)](https://www.djangoproject.com/)
 [![DRF](https://img.shields.io/badge/Django_REST_Framework-Planned-a30000)](https://www.django-rest-framework.org/)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Status](https://img.shields.io/badge/Status-Archived-lightgrey.svg)](#项目状态)
+[![Status](https://img.shields.io/badge/Status-Archived-lightgrey.svg)](#project-status)
 
-**简体中文** | [English](README.en.md)
+**English** | [简体中文](README.zh-CN.md)
 
 </div>
 
 > [!IMPORTANT]
-> 本仓库是用于学习前后端分离架构与 NER 标注业务拆分的练习项目，当前停留在脚手架阶段。项目已结束且不再更新，不应直接用于生产环境。
+> This is a practice project for learning front-end/back-end separation and NER workflow design. It remains at the scaffold stage, is no longer maintained, and is not suitable for production use.
 
-## 项目简介
+## Overview
 
-NER Annotation Workbench Prototype 最初用于探索一个面向命名实体识别任务的数据标注工作台。项目采用前后端分离结构，计划覆盖从原始文本导入、实体标注、数据概览到标注结果导出的基础流程。
+NER Annotation Workbench Prototype was created to explore the structure of a web-based data annotation workbench for named entity recognition. Its intended workflow covered raw-text import, entity annotation, dataset overview, and annotation export.
 
-当前仓库完成了 Vue 前端、Django 后端及业务模块的初始搭建，尚未实现完整的标注界面、数据模型和 REST API。仓库保留为学习记录和项目结构参考。
+The repository currently contains an initialized Vue front end, a Django back end, and placeholder business modules. It does not include a complete annotation interface, data models, or REST APIs. The code is preserved as a learning record and project-structure reference.
 
-## 设计目标
-
-项目规划的数据流如下：
+## Intended Workflow
 
 ```text
-文本数据导入 → 命名实体标注 → 标注数据概览 → 标注结果导出
+Text Import → Named Entity Annotation → Dataset Overview → Annotation Export
 ```
 
-| 模块 | 规划职责 | 当前状态 |
+| Module | Intended responsibility | Current status |
 | --- | --- | :---: |
-| 数据导入 | 导入并解析待标注文本 | 仅创建 Django App |
-| 数据标注 | 选择文本片段并分配实体标签 | 仅创建 Django App |
-| 数据概览 | 展示数据量、标签和标注进度 | 仅创建 Django App |
-| 数据导出 | 导出结构化标注结果 | 仅创建 Django App |
-| Web 前端 | 提供标注与管理界面 | Vue 默认页面 |
-| REST API | 连接前端与后端业务 | 尚未实现 |
+| Data import | Import and parse text for annotation | Django app scaffold only |
+| Data annotation | Select text spans and assign entity labels | Django app scaffold only |
+| Data overview | Display dataset, label, and progress statistics | Django app scaffold only |
+| Data export | Export structured annotation results | Django app scaffold only |
+| Web front end | Provide annotation and management interfaces | Default Vue page |
+| REST API | Connect front-end and back-end functionality | Not implemented |
 
-## 技术栈
+## Technology Stack
 
-| 层级 | 技术 |
+| Layer | Technology |
 | --- | --- |
-| 前端 | Vue 3、Vite |
-| 后端 | Python、Django、Django REST Framework |
-| 数据库 | SQLite（Django 默认配置） |
-| 项目结构 | 前后端分离 |
+| Front end | Vue 3, Vite |
+| Back end | Python, Django, Django REST Framework |
+| Database | SQLite (default Django configuration) |
+| Architecture | Separated front end and back end |
 
-## 项目结构
+## Repository Structure
 
 ```text
 ner-annotation-workbench-prototype/
 ├── backend/
-│   ├── config/                 # Django 项目配置
-│   ├── data_import/            # 数据导入模块（骨架）
-│   ├── data_annotation/        # 数据标注模块（骨架）
-│   ├── data_overview/          # 数据概览模块（骨架）
-│   ├── data_export/            # 数据导出模块（骨架）
+│   ├── config/                 # Django project configuration
+│   ├── data_import/            # Data import module (scaffold)
+│   ├── data_annotation/        # Data annotation module (scaffold)
+│   ├── data_overview/          # Dataset overview module (scaffold)
+│   ├── data_export/            # Data export module (scaffold)
 │   ├── manage.py
 │   └── requirements.txt
 ├── frontend/
 │   ├── public/
 │   ├── src/
-│   │   ├── App.vue             # Vue 默认示例页面
-│   │   └── main.js             # 前端入口
+│   │   ├── App.vue             # Default Vue example page
+│   │   └── main.js             # Front-end entry point
 │   ├── package.json
 │   └── vite.config.js
-├── docs/                       # 项目文档目录
+├── docs/                       # Project documentation
+├── CHANGELOG.zh-CN.md          # Simplified Chinese release notes
 ├── LICENSE
-├── README.md                   # 简体中文文档
-└── README.en.md                # 英文文档
+├── README.md                   # English documentation
+└── README.zh-CN.md             # Simplified Chinese documentation
 ```
 
-## 快速开始
+## Quick Start
 
-以下步骤仅用于运行当前脚手架，不能获得完整的 NER 标注功能。
+These steps run the current scaffold only; they do not provide a complete NER annotation application.
 
-### 环境要求
+### Requirements
 
-- Python 3.9 或更高版本
-- Node.js 20.19+ 或 22.12+
+- Python 3.9 or later
+- Node.js 20.19+ or 22.12+
 - npm
 
-### 运行后端
+### Back End
 
 ```bash
 cd backend
-
-# 建议使用虚拟环境
 python -m venv .venv
 
 # Windows PowerShell
@@ -106,11 +103,9 @@ python manage.py migrate
 python manage.py runserver
 ```
 
-后端默认运行于 `http://127.0.0.1:8000/`。当前仅配置了 Django Admin 路由，业务 API 尚未实现。
+The server starts at `http://127.0.0.1:8000/` by default. Only the Django Admin route is configured; no business API is available.
 
-### 运行前端
-
-打开另一个终端：
+### Front End
 
 ```bash
 cd frontend
@@ -118,50 +113,47 @@ npm install
 npm run dev
 ```
 
-根据终端提示访问本地开发地址。当前页面为 Vue 初始化示例页面。
+Open the local address shown by Vite. The current interface is the default Vue starter page.
 
-### 构建前端
+### Production Build
 
 ```bash
 cd frontend
 npm run build
 ```
 
-## 当前限制
+## Known Limitations
 
-- 未定义文本、实体标签和标注结果的数据模型。
-- 未实现数据导入、标注、统计或导出逻辑。
-- 未提供 REST API、序列化器及业务路由。
-- 未实现可交互的 NER 标注界面。
-- 未集成任何 NER 模型，不支持模型训练、推理或自动预标注。
-- 未提供完整的自动化测试和部署配置。
-- Django 当前使用开发配置，不适合生产部署。
+- No data models for documents, entity labels, or annotations.
+- No import, annotation, statistics, or export logic.
+- No serializers, REST APIs, or business routes.
+- No interactive NER annotation interface.
+- No NER model integration, training, inference, or automatic pre-annotation.
+- No complete automated test or deployment setup.
+- The Django configuration is for development and is not production-ready.
 
-## 项目状态
+## Project Status
 
-**Archived / 已归档**
+**Archived**
 
-本项目作为个人练习项目保留，开发已经结束，后续不再维护或增加功能。仓库内容反映的是项目停止时的实际完成状态。
+Development of this personal practice project has ended. No further features or maintenance are planned, and the repository reflects its actual implementation state when work stopped.
 
-如需实际的文本标注能力，建议选择仍在维护的成熟标注平台；如需继续开发，可在现有模块划分基础上补充数据模型、API、前端交互及测试。
+## Learning Scope
 
-## 学习内容
+- Initializing Vue and Django applications.
+- Organizing a Django project into multiple business apps.
+- Decomposing an NER annotation workflow into modules.
+- Structuring a separated front-end/back-end repository.
 
-该项目主要用于练习：
+## License
 
-- Vue 与 Django 的前后端项目初始化；
-- Django 多业务 App 的目录划分；
-- NER 数据标注流程的模块化设计；
-- 前后端分离项目的基础组织方式。
-
-## 许可证
-
-本项目采用 [MIT License](LICENSE) 开源许可证。
+This project is licensed under the [MIT License](LICENSE).
 
 ---
 
 <div align="center">
 
-该仓库仅作为学习记录保留。
+Preserved as a learning record.
 
 </div>
+
