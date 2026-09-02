@@ -70,6 +70,7 @@ ner-studio/
 │   └── vite.config.js
 ├── docs/                       # Project documentation
 ├── CHANGELOG.zh-CN.md          # Simplified Chinese release notes
+├── CONTRIBUTING.md             # Contribution and branch workflow
 ├── LICENSE
 ├── README.md                   # English documentation
 └── README.zh-CN.md             # Simplified Chinese documentation
@@ -146,7 +147,7 @@ Development of this personal practice project has ended. No further features or 
 
 ## License
 
-This project is licensed under the [MIT License](LICENSE).
+Except where otherwise noted, this project is licensed under the [MIT License](LICENSE). See [CONTRIBUTING.md](CONTRIBUTING.md) for the contribution and branch workflow. Bundled third-party components remain subject to their respective licenses.
 
 ---
 
