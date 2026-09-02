@@ -73,6 +73,7 @@ ner-studio/
 │   └── vite.config.js
 ├── docs/                       # 项目文档目录
 ├── CHANGELOG.zh-CN.md          # 简体中文更新日志
+├── CONTRIBUTING.md             # 贡献与分支工作流
 ├── LICENSE
 ├── README.md                   # 英文文档
 └── README.zh-CN.md             # 简体中文文档
@@ -157,7 +158,7 @@ npm run build
 
 ## 许可证
 
-本项目采用 [MIT License](LICENSE) 开源许可证。
+除另有说明外，本项目采用 [MIT License](LICENSE)。贡献与分支工作流参见 [CONTRIBUTING.md](CONTRIBUTING.md)；仓库中附带的第三方组件仍遵守各自许可证。
 
 ---
 
